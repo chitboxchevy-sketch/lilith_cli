@@ -1,0 +1,25 @@
+This file explicitly tells Render to deploy a Python Web Service,
+which prevents the "failed to read dockerfile" error.
+services:
+
+type: web
+
+This name should match the name of your Render service.
+name: lilith-cli
+
+CRITICAL: Forces the environment to be Python, not Docker.
+env: python
+
+Command to install Python dependencies from requirements.txt
+buildCommand: pip install -r requirements.txt
+
+Command to start the Flask application using Gunicorn
+startCommand: gunicorn lilith_cli:app
+
+Environment Variables (The actual key must be set in the Render dashboard for security)
+envVars:
+
+key: GEMINI_API_KEY
+
+The actual value is set securely in the Render UI; this line just makes Render aware of it.
+sync: false
