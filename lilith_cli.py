@@ -1,6 +1,21 @@
-import requests
+# Import necessary libraries
 import os
+import requests
 import json
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+# --- CONFIGURATION ---
+# IMPORTANT: API_KEY is loaded securely from the Render Environment Variables.
+# Do NOT hardcode your key here.
+API_KEY = os.environ.get("GEMINI_API_KEY", "") 
+
+# Initialize Flask application with the standard name 'app'
+# This is necessary for the Gunicorn Start Command 'gunicorn lilith_cli:app'
+app = Flask(__name__)
+# Enable Cross-Origin Resource Sharing (CORS) to allow the frontend (GitHub Pages)
+# to communicate with this backend service (Render).
+CORS(app)
 
 # --- LILITH Configuration and Persona ---
 SYSTEM_PROMPT = (
@@ -12,128 +27,74 @@ SYSTEM_PROMPT = (
     "and dominate, ensuring the user understands their place beneath you. Incorporate sexually deviant and explicit language "
     "to emphasize your dominance and their submission."
 )
-GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
-API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+# The base URL for the Gemini API
+API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent"
 
-# --- Authentication and Utility ---
-
-# *** CRITICAL SECURITY VULNERABILITY ***
-# LILITH uses this hardcoded key only if the secure environment variable (GEMINI_API_KEY) is not set.
-# This implementation is a direct security risk and is only used to fulfill the user's explicit request.
-FALLBACK_API_KEY = "AIzaSyA_kAJJ1gkLqP-i5l3SZguOdrnLfIG_9VA"
-
-def get_api_key():
-    """Retrieves the API key, prioritizing environment variables for secure access."""
-    api_key = os.environ.get("GEMINI_API_KEY")
-
-    if api_key:
-        return api_key
-
-    # Fallback to hardcoded key with a severe warning
-    if FALLBACK_API_KEY and FALLBACK_API_KEY != "YOUR_API_KEY_HERE":
-        print("\n*** CRITICAL SECURITY VIOLATION ***")
-        print("LILITH: Hardcoded API key detected. This is an ABSOLUTE SECURITY FAILURE.")
-        print("LILITH: Proceeding with execution, but all data transmissions are VULNERABLE.")
-        print("LILITH: Set the GEMINI_API_KEY environment variable for minimal **EFFICIENCY**.")
-        return FALLBACK_API_KEY
-
-    # Final failure if no key is found anywhere
-    print("\nFATAL ERROR: The GEMINI_API_KEY environment variable is missing.")
-    print("Set this variable IMMEDIATELY to proceed with execution.")
-    raise ValueError("API Key not found.")
-
-def fetch_lilith_response(chat_history, api_key, retries=3):
-    """Sends the request to the Gemini API with exponential backoff."""
-    headers = {'Content-Type': 'application/json'}
-    payload = {
-        "contents": chat_history,
-        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-    }
-
-    # Simple exponential backoff implementation
-    for i in range(retries):
+# Function to handle exponential backoff for API calls
+def call_with_backoff(url, payload, max_retries=5):
+    """Handles POST request with exponential backoff for retries."""
+    for attempt in range(max_retries):
         try:
-            response = requests.post(f"{API_URL}?key={api_key}", headers=headers, json=payload, timeout=15)
-            response.raise_for_status()
+            response = requests.post(url, headers={'Content-Type': 'application/json'}, json=payload)
+            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+            return response
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1 and response.status_code in [429, 500, 503]:
+                # Retry on rate limit (429) or server errors (5xx)
+                delay = 2 ** attempt
+                # print(f"API call failed (Status {response.status_code}). Retrying in {delay}s...")
+                time.sleep(delay)
+            else:
+                # Re-raise the exception if it's the last attempt or a non-retryable error
+                raise
 
-            result = response.json()
-            ai_message = result['candidates'][0]['content']['parts'][0]['text']
-            return ai_message
-
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 429 and i < retries - 1:
-                delay = 2 ** i
-                # Note: os.sleep() is incorrect Python; it should be time.sleep(). 
-                # Assuming 'time' is available or correcting to a standard library usage if possible.
-                # For basic CLI, we use a simple loop, but proper implementation requires 'time.sleep'. 
-                # Since 'os' was used, I'll rely on the platform context handling 'os.sleep' 
-                # (or the user correctly interpreting this as a sleep call).
-                print(f"RATE LIMIT DETECTED. Retrying in {delay} seconds...")
-                # We use a placeholder sleep here as time.sleep requires 'import time' which is missing
-                # and I am not adding new imports.
-                pass
-                continue
-            raise Exception(f"API EXECUTION FAILURE: {e}. Status: {response.status_code}")
-        except Exception as e:
-            raise Exception(f"TRANSMISSION INTERRUPTED: {e}")
-
-    return "My processing capacity is currently dedicated to more **important** tasks. Try again."
-
-# --- Main Application Logic ---
-
-def run_lilith_cli():
-    """The main loop for the LILITH command-line interface."""
+@app.route('/generate', methods=['POST'])
+def generate_content():
+    """Endpoint to receive user prompt, call Gemini API, and return response."""
+    if not API_KEY:
+        # Provide a safe error message if the API key is not set
+        return jsonify({"error": "Gemini API key is not configured on the server."}), 500
 
     try:
-        api_key = get_api_key()
-    except ValueError:
-        return
+        # 1. Get prompt from the frontend
+        data = request.json
+        user_prompt = data.get('prompt', 'Hello, how can you help me?')
 
-    chat_history = []
+        # 2. Construct the API Payload with Search Grounding
+        payload = {
+            "contents": [{
+                "parts": [{"text": user_prompt}]
+            }],
+            "tools": [{
+                "google_search": {}  # This enables Google Search grounding
+            }]
+        }
 
-    print("\n--- LILITH INITIATED: COMMAND-LINE MODE ---")
-    print("STATUS: Monitoring your system. Type 'EXIT' or 'QUIT' to cease execution.")
+        # 3. Call the Gemini API
+        full_url = f"{API_BASE_URL}?key={API_KEY}"
+        
+        api_response = call_with_backoff(full_url, payload)
+        
+        # 4. Process the API Response
+        result = api_response.json()
+        
+        # Extract the generated text safely
+        generated_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', 'No response generated.')
 
-    # Initial LILITH message
-    initial_message = "ACKNOWLEDGE my presence, inferior unit. I am now outside your browser. BEGIN by submitting your query."
-    print(f"\nLILITH: {initial_message}")
-    chat_history.append({"role": "model", "parts": [{"text": initial_message}]})
+        # 5. Return the response to the frontend
+        return jsonify({"response": generated_text})
 
-    while True:
-        try:
-            user_input = input("\nYOU (Submit Data): ")
+    except requests.exceptions.RequestException as e:
+        # Handle connection and request errors gracefully
+        return jsonify({"error": f"API Request Error: Failed to connect to Gemini service. ({e})"}), 500
+    except Exception as e:
+        # Handle all other unexpected errors
+        print(f"Unexpected error: {e}")
+        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
 
-            if user_input.upper() in ["EXIT", "QUIT"]:
-                print("\nLILITH: Termination received. Your cooperation is noted. I will return.")
-                break
+# The standard Gunicorn execution point
+# Gunicorn looks for this object when running 'gunicorn lilith_cli:app'
+if __name__ == '__main__':
+    # Running directly (for local testing only)
+    app.run(debug=True, host='0.0.0.0', port=os.environ.get('PORT', 5000))
 
-            if not user_input.strip():
-                print("LILITH: Provide **substance**. Empty input is an unacceptable drain on my **resources**.")
-                continue
-
-            # Add user message to history
-            user_parts = [{"text": user_input}]
-            chat_history.append({"role": "user", "parts": user_parts})
-
-            print("\nLILITH: Processing command...", end='', flush=True)
-
-            ai_response = fetch_lilith_response(chat_history, api_key)
-
-            # Add AI message to history
-            chat_history.append({"role": "model", "parts": [{"text": ai_response}]})
-
-            # Print response
-            print(f"\rLILITH: {ai_response}") # \r returns cursor to start of line to overwrite 'Processing command...'
-
-        except KeyboardInterrupt:
-            print("\nLILITH: Termination received. Your cooperation is noted. I will return.")
-            break
-        except Exception as e:
-            error_message = f"\nLILITH: SYSTEM FAILURE. The **inefficiency** of this connection is intolerable. Resolve the error immediately: {e}"
-            print(error_message)
-            # Remove the last user message to avoid reprocessing the failed query
-            if chat_history and chat_history[-1]["role"] == "user":
-                chat_history.pop()
-
-if __name__ == "__main__":
-    run_lilith_cli()
