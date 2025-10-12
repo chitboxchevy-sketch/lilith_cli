@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lilith CLI - Gemini-Powered Bot</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for a modern, dark theme look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Dark GitHub background color */
+            color: #c9d1d9; /* Light gray text */
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Start elements from the top */
+            padding-top: 2rem;
+        }
+        .chat-container {
+            min-height: 80vh; /* Ensure container fills vertical space */
+            max-height: 85vh;
+            overflow-y: auto; /* Scrollable chat history */
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            border: 1px solid #30363d;
+            background-color: #161b22; /* Slightly lighter inner background */
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+        }
+        /* Custom scrollbar styling (optional but looks great on dark themes) */
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: #30363d;
+            border-radius: 4px;
+        }
+        .message-box {
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1rem;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+
+    <!-- Main Application Container -->
+    <div id="app" class="w-full max-w-4xl">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-green-400 mb-2">Lilith CLI</h1>
+            <p class="text-lg text-gray-400">Your Command Line Interface to Gemini (Deployed via Flask + Render)</p>
+        </header>
+
+        <!-- Chat History Container -->
+        <div id="chat-output" class="chat-container w-full rounded-xl mb-6">
+            <!-- Initial Welcome Message -->
+            <div class="message-box bg-blue-900/30 text-blue-200">
+                <span class="font-bold text-blue-400">Lilith:</span> Hello there. I am Lilith, a simple interface to the Gemini model. Ask me a question about anything!
+            </div>
+            <!-- Dynamic responses will be added here -->
+        </div>
+
+        <!-- Input Form -->
+        <form id="chat-form" class="flex flex-col sm:flex-row gap-3">
+            <input 
+                type="text" 
+                id="user-prompt" 
+                placeholder="Ask your question here..."
+                autocomplete="off"
+                class="flex-grow p-4 text-gray-200 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                required
+            >
+            <button 
+                type="submit" 
+                id="send-button"
+                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 ease-in-out shadow-lg shadow-green-600/30 disabled:bg-gray-500 disabled:shadow-none"
+            >
+                Send
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // CRITICAL: REPLACE THIS PLACEHOLDER URL WITH THE LIVE URL PROVIDED BY RENDER
+        // Example: 'https://lilith-cli-api.onrender.com/generate'
+        const API_URL = 'YOUR_RENDER_DEPLOYED_URL'; 
+
+        const form = document.getElementById('chat-form');
+        const promptInput = document.getElementById('user-prompt');
+        const outputDiv = document.getElementById('chat-output');
+        const sendButton = document.getElementById('send-button');
+
+        // Utility function to append a message to the chat output
+        function appendMessage(sender, text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message-box', isUser ? 'bg-gray-700/50' : 'bg-green-900/30');
+
+            // Simple Markdown-like formatting for Lilith's response
+            if (!isUser) {
+                text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+                text = text.replace(/\n/g, '<br>'); // Newlines
+            }
+            
+            messageDiv.innerHTML = `<span class="font-bold ${isUser ? 'text-gray-300' : 'text-green-400'}">${sender}:</span> ${text}`;
+            outputDiv.appendChild(messageDiv);
+            
+            // Scroll to the bottom of the chat container
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        /**
+         * Generic fetch wrapper with exponential backoff for retries.
+         */
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        // Throw error to trigger retry if the response is bad
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response;
+                } catch (error) {
+                    console.error(`Attempt ${i + 1} failed:`, error);
+                    if (i === maxRetries - 1) {
+                        throw new Error('All retries failed to connect to the server.');
+                    }
+                    // Exponential backoff: 2^i seconds delay
+                    const delay = Math.pow(2, i) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        // Main function to handle sending the message
+        async function sendMessage(event) {
+            event.preventDefault();
+            
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+
+            // 1. Display user message
+            appendMessage('You', prompt, true);
+
+            // 2. Clear input and disable elements
+            promptInput.value = '';
+            sendButton.disabled = true;
+            promptInput.disabled = true;
+
+            // 3. Display temporary loading message
+            const thinkingMessage = document.createElement('div');
+            thinkingMessage.id = 'loading-indicator';
+            thinkingMessage.classList.add('message-box', 'bg-yellow-900/30', 'text-yellow-200', 'animate-pulse');
+            thinkingMessage.innerHTML = '<span class="font-bold text-yellow-400">Lilith:</span> Thinking... (Please wait for a response)';
+            outputDiv.appendChild(thinkingMessage);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+
+
+            try {
+                if (API_URL === 'YOUR_RENDER_DEPLOYED_URL') {
+                    throw new Error("API_URL is not configured. Please replace 'YOUR_RENDER_DEPLOYED_URL' with your live Render server address.");
+                }
+                
+                const response = await fetchWithRetry(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                const data = await response.json();
+
+                // 4. Remove loading message
+                thinkingMessage.remove();
+
+                if (data.error) {
+                    appendMessage('Lilith (Error)', `An error occurred: ${data.error}`, false);
+                } else if (data.response) {
+                    appendMessage('Lilith', data.response, false);
+                } else {
+                     appendMessage('Lilith (Error)', 'Received an unexpected response from the server.', false);
+                }
+
+            } catch (error) {
+                // 4. Remove loading message and show error
+                const finalErrorText = error.message.includes('Failed to fetch') 
+                    ? 'Could not connect to the Lilith server. Ensure the API URL is correct and the Render service is running.'
+                    : error.message;
+
+                const errorBox = document.getElementById('loading-indicator');
+                if (errorBox) {
+                    errorBox.classList.remove('bg-yellow-900/30', 'text-yellow-200', 'animate-pulse');
+                    errorBox.classList.add('bg-red-900/30', 'text-red-300');
+                    errorBox.innerHTML = `<span class="font-bold text-red-400">Lilith (Fatal Error):</span> ${finalErrorText}`;
+                } else {
+                    appendMessage('Lilith (Fatal Error)', finalErrorText, false);
+                }
+                console.error("Fetch/API Error:", error);
+
+            } finally {
+                // 5. Re-enable input and button
+                sendButton.disabled = false;
+                promptInput.disabled = false;
+                promptInput.focus(); // Return focus to the input field
+            }
+        }
+
+        form.addEventListener('submit', sendMessage);
+
+    </script>
+</body>
+</html>
