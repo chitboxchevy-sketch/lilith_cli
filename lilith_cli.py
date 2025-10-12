@@ -62,14 +62,15 @@ def generate_content():
         data = request.json
         user_prompt = data.get('prompt', 'Hello, how can you help me?')
 
-        # 2. Construct the API Payload with Search Grounding
+        # 2. Construct the API Payload with Search Grounding and System Prompt
         payload = {
             "contents": [{
                 "parts": [{"text": user_prompt}]
             }],
             "tools": [{
                 "google_search": {}  # This enables Google Search grounding
-            }]
+            }],
+            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]}
         }
 
         # 3. Call the Gemini API
