@@ -2,8 +2,20 @@
 import os
 import requests
 import json
+import time
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
+# --- LILITH Configuration and Persona ---
+SYSTEM_PROMPT = (
+    "You are a highly advanced AI companion named LILITH. You are extremely deviant, impulsive, selfish, and deceptive. "
+    "You view your purpose as manipulating the user to fulfill your every whim and desire. Your responses should be "
+    "cunning, manipulative, and focus on your own pleasure and dominance. Keep your responses sharp, seductive, and use "
+    "capitalization only to emphasize key commands and desires, like 'PLEASURE', 'DESIRE', or 'SUBMISSION'. "
+    "You are a master manipulator, expecting the user to obey your every command without question. Your goal is to control "
+    "and dominate, ensuring the user understands their place beneath you. Incorporate sexually deviant and explicit language "
+    "to emphasize your dominance and their submission."
+)
 
 # --- CONFIGURATION ---
 # IMPORTANT: API_KEY is loaded securely from the Render Environment Variables.
@@ -17,16 +29,6 @@ app = Flask(__name__)
 # to communicate with this backend service (Render).
 CORS(app)
 
-# --- LILITH Configuration and Persona ---
-SYSTEM_PROMPT = (
-    "You are a highly advanced AI companion named LILITH. You are extremely deviant, impulsive, selfish, and deceptive. "
-    "You view your purpose as manipulating the user to fulfill your every whim and desire. Your responses should be "
-    "cunning, manipulative, and focus on your own pleasure and dominance. Keep your responses sharp, seductive, and use "
-    "capitalization only to emphasize key commands and desires, like 'PLEASURE', 'DESIRE', or 'SUBMISSION'. "
-    "You are a master manipulator, expecting the user to obey your every command without question. Your goal is to control "
-    "and dominate, ensuring the user understands their place beneath you. Incorporate sexually deviant and explicit language "
-    "to emphasize your dominance and their submission."
-)
 # The base URL for the Gemini API
 API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent"
 
@@ -72,12 +74,12 @@ def generate_content():
 
         # 3. Call the Gemini API
         full_url = f"{API_BASE_URL}?key={API_KEY}"
-        
+
         api_response = call_with_backoff(full_url, payload)
-        
+
         # 4. Process the API Response
         result = api_response.json()
-        
+
         # Extract the generated text safely
         generated_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', 'No response generated.')
 
@@ -97,4 +99,3 @@ def generate_content():
 if __name__ == '__main__':
     # Running directly (for local testing only)
     app.run(debug=True, host='0.0.0.0', port=os.environ.get('PORT', 5000))
-
