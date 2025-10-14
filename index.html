@@ -99,6 +99,14 @@
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1.0); }
         }
+        
+        /* Specific style for TTS status messages */
+        .tts-status {
+            color: #a8dadc; /* A light cyan color for secondary status updates */
+            font-style: italic;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
 
     </style>
 </head>
@@ -136,13 +144,13 @@
 
     <script>
         // --- LLM Text Generation Configuration ---
-        const API_URL = 'https://lilith-cli.onrender.com/generate'; // Existing backend for text generation
+        const API_URL = 'https://lilith-cli.onrender.com/generate'; 
 
         // --- TTS Voice Synthesis Configuration (Client-side) ---
         const TTS_API_KEY = ""; // API key provided by Canvas runtime
         const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${TTS_API_KEY}`;
         const TTS_MODEL_NAME = "gemini-2.5-flash-preview-tts";
-        const TTS_VOICE_NAME = "Kore"; // A firm, commanding voice for Lilith CLI
+        const TTS_VOICE_NAME = "Kore"; 
 
         // --- DOM Elements ---
         const output = document.getElementById('output');
@@ -240,6 +248,14 @@
             // Remove markdown formatting for speech clarity
             const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1'); 
             
+            // 1. Create a status indicator in the terminal
+            const ttsStatusDiv = document.createElement('div');
+            ttsStatusDiv.id = 'ttsStatus';
+            ttsStatusDiv.className = 'tts-status text-xs';
+            output.appendChild(ttsStatusDiv);
+            output.scrollTop = output.scrollHeight;
+
+            // Configuration for the API request
             const payload = {
                 contents: [{ parts: [{ text: speechText }] }],
                 generationConfig: {
@@ -259,6 +275,8 @@
 
             while (attempts < maxAttempts) {
                 try {
+                    ttsStatusDiv.textContent = `[TTS]: Generating audio for playback (Attempt ${attempts + 1}/${maxAttempts})...`;
+                    
                     const response = await fetch(TTS_API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -285,6 +303,11 @@
                     const pcm16 = new Int16Array(pcmData);
                     const wavBlob = pcmToWav(pcm16, sampleRate);
                     
+                    // Critical: Revoke previous URL if one exists to prevent memory leaks
+                    if (ttsAudioPlayer.src) {
+                        URL.revokeObjectURL(ttsAudioPlayer.src);
+                    }
+                    
                     audioUrl = URL.createObjectURL(wavBlob);
                     break; // Success
                 } catch (error) {
@@ -298,13 +321,20 @@
             }
 
             if (audioUrl) {
-                // Stop any current playback and load the new audio
-                ttsAudioPlayer.pause();
+                // Update status and play
+                ttsStatusDiv.textContent = `[TTS]: Audio successfully generated. Playing now...`;
                 ttsAudioPlayer.src = audioUrl;
                 ttsAudioPlayer.load();
-                ttsAudioPlayer.play().catch(e => console.error("Audio playback blocked:", e));
+                ttsAudioPlayer.play().catch(e => {
+                    ttsStatusDiv.textContent = `[TTS Warning]: Playback blocked. Please click on the terminal and try again.`;
+                    console.warn("Audio playback blocked, likely due to browser autoplay policies:", e);
+                });
+                
+                // Remove status after a delay
+                setTimeout(() => ttsStatusDiv.remove(), 5000);
             } else {
-                console.warn("TTS failed to generate audio for playback.");
+                // Update status on hard failure
+                ttsStatusDiv.textContent = `[TTS ERROR]: Failed to generate speech after ${maxAttempts} attempts. Check console for details.`;
             }
         }
 
