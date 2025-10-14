@@ -147,8 +147,9 @@
         const API_URL = 'https://lilith-cli.onrender.com/generate'; 
 
         // --- TTS Voice Synthesis Configuration (Client-side) ---
-        const TTS_API_KEY = ""; // API key provided by Canvas runtime
-        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${TTS_API_KEY}`;
+        // CRITICAL FIX: Ensure the API key is correctly pulled from the global environment variable
+        const CLIENT_API_KEY = typeof __api_key !== 'undefined' ? __api_key : "";
+        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${CLIENT_API_KEY}`;
         const TTS_MODEL_NAME = "gemini-2.5-flash-preview-tts";
         const TTS_VOICE_NAME = "Kore"; 
 
@@ -245,6 +246,15 @@
          * @param {string} text - The text to be spoken.
          */
         async function synthesizeAndPlaySpeech(text) {
+            // Check for API Key before attempting to call
+            if (!CLIENT_API_KEY) {
+                console.error("TTS Error: API Key is missing. Cannot make TTS API call.");
+                const statusDiv = document.getElementById('ttsStatus');
+                if (statusDiv) statusDiv.textContent = `[TTS ERROR]: API Key not available. Speech synthesis failed.`;
+                setTimeout(() => statusDiv.remove(), 5000);
+                return;
+            }
+            
             // Remove markdown formatting for speech clarity
             const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1'); 
             
@@ -284,7 +294,10 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error(`TTS API returned status ${response.status}`);
+                        // Log full error details for debugging
+                        const errorDetails = await response.text();
+                        console.error(`TTS API returned status ${response.status}: ${errorDetails}`);
+                        throw new Error(`TTS API failed with status ${response.status}`);
                     }
 
                     const result = await response.json();
