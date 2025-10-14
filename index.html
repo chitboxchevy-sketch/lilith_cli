@@ -9,7 +9,7 @@
     <style>
         /* Custom styles for a command-line feel */
         @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');
-       
+        
         body {
             font-family: 'Inconsolata', monospace;
             /* * BACKGROUND IMAGE ADDED: 1000009457.png (Lost Cat Poster)
@@ -22,7 +22,6 @@
             background-attachment: fixed;
             background-position: center;
 
-
             background-color: #0d1117; /* Base dark color, used as fallback and in the gradient */
             color: #c9d1d9; /* Light gray text */
             min-height: 100vh;
@@ -31,7 +30,6 @@
             justify-content: center;
             padding: 1rem;
         }
-
 
         .terminal-container {
             width: 100%;
@@ -46,7 +44,6 @@
             overflow: hidden;
         }
 
-
         #output {
             flex-grow: 1;
             padding: 1rem;
@@ -56,7 +53,7 @@
             line-height: 1.5;
             scrollbar-color: #238636 #010409;
         }
-       
+        
         /* Style for the input area at the bottom */
         .input-area {
             display: flex;
@@ -65,13 +62,11 @@
             background-color: #010409;
         }
 
-
         .prompt-prefix {
             color: #238636; /* Bright green for the prompt */
             margin-right: 0.5rem;
             white-space: nowrap;
         }
-
 
         #commandInput {
             flex-grow: 1;
@@ -83,12 +78,11 @@
             font-size: 1rem;
         }
 
-
         .response-text {
             color: #fff; /* White for easier reading of the response */
             margin-bottom: 1rem;
         }
-       
+        
         .loading-dot {
             display: inline-block;
             width: 8px;
@@ -100,12 +94,12 @@
         }
         .loading-dot:nth-child(1) { animation-delay: -0.32s; }
         .loading-dot:nth-child(2) { animation-delay: -0.16s; }
-       
+        
         @keyframes bounce {
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1.0); }
         }
-       
+        
         /* Specific style for TTS status messages */
         .tts-status {
             color: #a8dadc; /* A light cyan color for secondary status updates */
@@ -114,21 +108,18 @@
             margin-bottom: 0.5rem;
         }
 
-
     </style>
 </head>
 <body>
-
 
     <!-- Startup Overlay - Requires user click to enable audio autoplay -->
     <div id="startupOverlay" class="fixed inset-0 bg-black bg-opacity-95 flex flex-col items-center justify-center z-50 text-white">
         <h1 class="text-4xl font-bold text-green-400 mb-8">Lilith CLI Interface</h1>
         <button onclick="startApp()" class="px-8 py-4 bg-green-600 text-lg font-bold rounded-xl hover:bg-green-700 transition duration-300 shadow-lg ring ring-green-400 ring-opacity-50">
-            wakeup server and initialize LILITH_CLI interface..(CLICK HERE)
+            CLICK HERE to wake-up server & initalize LILITH_CLI interface.
         </button>
-        <p class="mt-4 text-sm text-gray-400">Audio playback requires a user interaction in most browsers.</p>
+        <p class="mt-4 text-sm text-gray-400">BY CLICKING YOU ARE  ENABLING AUDIO PLAYBACK.</p>
     </div>
-
 
     <div class="terminal-container">
         <!-- Terminal Output Area -->
@@ -137,17 +128,15 @@
                 [ Lilith CLI v1.0.0 ] Waiting for user to start interface...
             </p>
         </div>
-       
+        
         <!-- Terminal Input Area -->
         <div class="input-area">
             <div class="prompt-prefix">lilith_cli $</div>
             <input type="text" id="commandInput" placeholder="Ask me anything..." disabled>
         </div>
 
-
         <!-- Hidden Audio Player for TTS -->
         <audio id="ttsAudioPlayer" style="display: none;"></audio>
-
 
         <!-- Modal for Alerts (replacing alert()) -->
         <div id="alertModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50">
@@ -161,19 +150,17 @@
         </div>
     </div>
 
-
     <script>
         // --- LLM Text Generation Configuration ---
-        const API_URL = 'https://lilith-cli.onrender.com/generate';
-
+        const API_URL = 'https://lilith-cli.onrender.com/generate'; 
 
         // --- TTS Voice Synthesis Configuration (Client-side) ---
-        // CRITICAL: Get API key from the execution environment
+        // CRITICAL: Get API key from the execution environment. This will be an empty string 
+        // if the environment is meant to inject the key automatically (which is standard for client-side Gemini calls).
         const CLIENT_API_KEY = typeof __api_key !== 'undefined' ? __api_key : "";
         const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${CLIENT_API_KEY}`;
         const TTS_MODEL_NAME = "gemini-2.5-flash-preview-tts";
-        const TTS_VOICE_NAME = "Kore";
-
+        const TTS_VOICE_NAME = "Kore"; 
 
         // --- DOM Elements ---
         const output = document.getElementById('output');
@@ -184,9 +171,7 @@
         const startupOverlay = document.getElementById('startupOverlay');
         let isProcessing = false;
 
-
         // --- Utility Functions for PCM to WAV Conversion (CRITICAL for TTS) ---
-
 
         /**
          * Converts a base64 string to an ArrayBuffer.
@@ -203,7 +188,6 @@
             return bytes.buffer;
         }
 
-
         /**
          * Converts 16-bit signed PCM data (Int16Array) into a standard WAV file Blob.
          * @param {Int16Array} pcm16 - The raw PCM audio data.
@@ -216,13 +200,11 @@
             const blockAlign = numChannels * bytesPerSample;
             const byteRate = sampleRate * blockAlign;
             const dataSize = pcm16.length * bytesPerSample;
-            const fileSize = 36 + dataSize;
-
+            const fileSize = 36 + dataSize; 
 
             const buffer = new ArrayBuffer(fileSize + 8);
             const view = new DataView(buffer);
             let offset = 0;
-
 
             function writeString(s) {
                 for (let i = 0; i < s.length; i++) {
@@ -230,13 +212,12 @@
                 }
             }
 
-
             // RIFF Chunk
             writeString('RIFF');
             view.setUint32(offset, fileSize, true);
             offset += 4;
             writeString('WAVE');
-           
+            
             // fmt Chunk
             writeString('fmt ');
             view.setUint32(offset, 16, true);
@@ -254,12 +235,10 @@
             view.setUint16(offset, 16, true); // 16 bits per sample
             offset += 2;
 
-
             // data Chunk
             writeString('data');
             view.setUint32(offset, dataSize, true);
             offset += 4;
-
 
             // Write PCM data
             for (let i = 0; i < pcm16.length; i++) {
@@ -267,39 +246,30 @@
                 offset += 2;
             }
 
-
             return new Blob([buffer], { type: 'audio/wav' });
         }
-       
+        
         // --- TTS API Function ---
-       
+        
         /**
          * Synthesizes text to speech using Gemini and plays the resulting audio.
          * @param {string} text - The text to be spoken.
          */
         async function synthesizeAndPlaySpeech(text) {
-            // Check for API Key before attempting to call
-            if (!CLIENT_API_KEY) {
-                console.error("TTS Error: API Key is missing. Speech synthesis failed.");
-                const statusDiv = document.getElementById('ttsStatus');
-                if (statusDiv) statusDiv.textContent = `[TTS ERROR]: API Key not available. Speech synthesis failed.`;
-                setTimeout(() => statusDiv.remove(), 5000);
-                return;
-            }
-
+            // The platform is expected to inject the API key if CLIENT_API_KEY is an empty string.
+            // We rely on the platform mechanism and removed the manual check that was causing the error.
 
             console.log(`[TTS DEBUG]: Attempting TTS call using URL: ${TTS_API_URL.substring(0, 70)}...`);
-           
+            
             // Remove markdown formatting for speech clarity
-            const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1');
-           
+            const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1'); 
+            
             // 1. Create a status indicator in the terminal
             const ttsStatusDiv = document.createElement('div');
             ttsStatusDiv.id = 'ttsStatus';
             ttsStatusDiv.className = 'tts-status text-xs';
             output.appendChild(ttsStatusDiv);
             output.scrollTop = output.scrollHeight;
-
 
             // Configuration for the API request
             const payload = {
@@ -315,22 +285,19 @@
                 model: TTS_MODEL_NAME
             };
 
-
             let audioUrl = null;
             let attempts = 0;
             const maxAttempts = 3;
 
-
             while (attempts < maxAttempts) {
                 try {
                     ttsStatusDiv.textContent = `[TTS]: Generating audio for playback (Attempt ${attempts + 1}/${maxAttempts})...`;
-                   
+                    
                     const response = await fetch(TTS_API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
-
 
                     if (!response.ok) {
                         // Log full error details for debugging
@@ -339,30 +306,27 @@
                         throw new Error(`TTS API failed with status ${response.status}`);
                     }
 
-
                     const result = await response.json();
                     const part = result?.candidates?.[0]?.content?.parts?.[0];
                     const audioData = part?.inlineData?.data;
-                    const mimeType = part?.inlineData?.mimeType;
-
+                    const mimeType = part?.inlineData?.mimeType; 
 
                     if (!audioData || !mimeType) {
                         throw new Error("TTS response was missing audio data.");
                     }
 
-
                     const rateMatch = mimeType.match(/rate=(\d+)/);
                     const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
-                   
+                    
                     const pcmData = base64ToArrayBuffer(audioData);
                     const pcm16 = new Int16Array(pcmData);
                     const wavBlob = pcmToWav(pcm16, sampleRate);
-                   
+                    
                     // Critical: Revoke previous URL if one exists to prevent memory leaks
                     if (ttsAudioPlayer.src) {
                         URL.revokeObjectURL(ttsAudioPlayer.src);
                     }
-                   
+                    
                     audioUrl = URL.createObjectURL(wavBlob);
                     break; // Success
                 } catch (error) {
@@ -375,7 +339,6 @@
                 }
             }
 
-
             if (audioUrl) {
                 // Update status and play
                 ttsStatusDiv.textContent = `[TTS]: Audio successfully generated. Playing now...`;
@@ -386,7 +349,7 @@
                     ttsStatusDiv.textContent = `[TTS Warning]: Playback blocked. Please click the terminal and try again.`;
                     console.warn("Audio playback blocked, likely due to browser autoplay policies:", e);
                 });
-               
+                
                 // Remove status after a delay
                 setTimeout(() => ttsStatusDiv.remove(), 5000);
             } else {
@@ -396,10 +359,7 @@
         }
 
 
-
-
         // --- Core Terminal Logic ---
-
 
         /**
          * Helper function to safely display error messages (replacing alert()).
@@ -411,7 +371,6 @@
             modal.classList.add('flex');
         }
 
-
         /**
          * Appends a new line of text to the terminal output.
          * @param {string} text - The text content.
@@ -420,7 +379,7 @@
         function appendOutput(text, type) {
             const line = document.createElement('div');
             line.classList.add('text-sm');
-           
+            
             if (type === 'user') {
                 line.innerHTML = `<span class="prompt-prefix">lilith_cli $</span><span class="text-gray-400">${text}</span>`;
             } else if (type === 'system') {
@@ -435,7 +394,6 @@
             output.scrollTop = output.scrollHeight;
         }
 
-
         /**
          * Displays a temporary loading indicator.
          */
@@ -443,14 +401,13 @@
             const loaderDiv = document.createElement('div');
             loaderDiv.id = 'loadingIndicator';
             loaderDiv.className = 'response-text mt-2 mb-4';
-            loaderDiv.innerHTML = 'Lilith is processing...' +
-                '<span class="loading-dot"></span>' +
-                '<span class="loading-dot"></span>' +
+            loaderDiv.innerHTML = 'Lilith is processing...' + 
+                '<span class="loading-dot"></span>' + 
+                '<span class="loading-dot"></span>' + 
                 '<span class="loading-dot"></span>';
             output.appendChild(loaderDiv);
             output.scrollTop = output.scrollHeight;
         }
-
 
         /**
          * Removes the loading indicator.
@@ -462,21 +419,18 @@
             }
         }
 
-
         /**
          * Handles sending the prompt to the Flask backend and receiving the response.
          */
         async function handlePrompt(prompt) {
             if (isProcessing) return;
 
-
             isProcessing = true;
             input.disabled = true;
-           
+            
             appendOutput(prompt, 'user');
             input.value = '';
             showLoading();
-
 
             try {
                 const response = await fetch(API_URL, {
@@ -487,25 +441,22 @@
                     body: JSON.stringify({ prompt: prompt })
                 });
 
-
                 const data = await response.json();
-               
+                
                 if (data.error) {
                     appendOutput(`ERROR: ${data.error}`, 'system');
                     showAlert(`Server Error: ${data.error}`);
                 } else if (data.response) {
                     // 1. Display the response text
                     appendOutput(data.response, 'system');
-                   
+                    
                     // 2. Synthesize and play the audio asynchronously
                     synthesizeAndPlaySpeech(data.response);
-
 
                 } else {
                     appendOutput("ERROR: Received an invalid response from the server.", 'system');
                     showAlert("Invalid server response format.");
                 }
-
 
             } catch (error) {
                 console.error('Fetch error:', error);
@@ -519,31 +470,27 @@
                 input.focus();
             }
         }
-       
+        
         // --- NEW: Application Startup Function (Triggered by user click) ---
         function startApp() {
             // Hide the overlay
             startupOverlay.classList.add('hidden');
-           
+            
             // Enable the input field
             input.disabled = false;
-           
+            
             // Focus on the input field
             input.focus();
 
-
             // Clear the initial text and add the welcome message to the terminal output
             output.innerHTML = '';
-            appendOutput("Welcome to the Lilith Command Line Interface. I am ready for your queries.", 'system');
-
+            appendOutput("This is the Lilith Command Line Interface. I am ready for your queries.", 'system');
 
             // Play the dynamic welcome audio
-            const welcomeText = "Welcome to the Lilith Command Line Interface. I am ready for your queries.";
+            const welcomeText = "This is the Lilith Command Line Interface. I am ready for your queries.";
             synthesizeAndPlaySpeech(welcomeText);
         }
         // --- END NEW STARTUP FUNCTION ---
-
-
 
 
         // Event Listener for the Input Field
@@ -552,7 +499,6 @@
                 handlePrompt(input.value.trim());
             }
         });
-
 
     </script>
 </body>
