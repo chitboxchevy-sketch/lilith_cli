@@ -119,6 +119,9 @@
             <input type="text" id="commandInput" placeholder="Ask me anything..." autofocus>
         </div>
 
+        <!-- Hidden Audio Player for TTS -->
+        <audio id="ttsAudioPlayer" style="display: none;"></audio>
+
         <!-- Modal for Alerts (replacing alert()) -->
         <div id="alertModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50">
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full border border-red-500">
@@ -132,19 +135,184 @@
     </div>
 
     <script>
-        // --- CRITICAL CHANGE: RENDER URL HAS BEEN HARDCODED ---
-        // This is the live URL pointing to your deployed Render Web Service endpoint.
-        const API_URL = 'https://lilith-cli.onrender.com/generate';
-        // --- END CRITICAL CHANGE ---
+        // --- LLM Text Generation Configuration ---
+        const API_URL = 'https://lilith-cli.onrender.com/generate'; // Existing backend for text generation
 
+        // --- TTS Voice Synthesis Configuration (Client-side) ---
+        const TTS_API_KEY = ""; // API key provided by Canvas runtime
+        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${TTS_API_KEY}`;
+        const TTS_MODEL_NAME = "gemini-2.5-flash-preview-tts";
+        const TTS_VOICE_NAME = "Kore"; // A firm, commanding voice for Lilith CLI
+
+        // --- DOM Elements ---
         const output = document.getElementById('output');
         const input = document.getElementById('commandInput');
         const modal = document.getElementById('alertModal');
         const modalMessage = document.getElementById('alertMessage');
+        const ttsAudioPlayer = document.getElementById('ttsAudioPlayer');
         let isProcessing = false;
 
+        // --- Utility Functions for PCM to WAV Conversion (CRITICAL for TTS) ---
+
         /**
-         * Helper function to safely display messages (replacing alert()).
+         * Converts a base64 string to an ArrayBuffer.
+         * @param {string} base64 - The base64 string from the API.
+         * @returns {ArrayBuffer}
+         */
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        /**
+         * Converts 16-bit signed PCM data (Int16Array) into a standard WAV file Blob.
+         * @param {Int16Array} pcm16 - The raw PCM audio data.
+         * @param {number} sampleRate - The audio sample rate (e.g., 24000).
+         * @returns {Blob} - A Blob representing the complete WAV file.
+         */
+        function pcmToWav(pcm16, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2; // 16-bit
+            const blockAlign = numChannels * bytesPerSample;
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = pcm16.length * bytesPerSample;
+            const fileSize = 36 + dataSize; 
+
+            const buffer = new ArrayBuffer(fileSize + 8);
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            function writeString(s) {
+                for (let i = 0; i < s.length; i++) {
+                    view.setUint8(offset++, s.charCodeAt(i));
+                }
+            }
+
+            // RIFF Chunk
+            writeString('RIFF');
+            view.setUint32(offset, fileSize, true);
+            offset += 4;
+            writeString('WAVE');
+            
+            // fmt Chunk
+            writeString('fmt ');
+            view.setUint32(offset, 16, true);
+            offset += 4;
+            view.setUint16(offset, 1, true); // PCM Format
+            offset += 2;
+            view.setUint16(offset, numChannels, true);
+            offset += 2;
+            view.setUint32(offset, sampleRate, true);
+            offset += 4;
+            view.setUint32(offset, byteRate, true);
+            offset += 4;
+            view.setUint16(offset, blockAlign, true);
+            offset += 2;
+            view.setUint16(offset, 16, true); // 16 bits per sample
+            offset += 2;
+
+            // data Chunk
+            writeString('data');
+            view.setUint32(offset, dataSize, true);
+            offset += 4;
+
+            // Write PCM data
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true);
+                offset += 2;
+            }
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+        
+        // --- TTS API Function ---
+        
+        /**
+         * Synthesizes text to speech using Gemini and plays the resulting audio.
+         * @param {string} text - The text to be spoken.
+         */
+        async function synthesizeAndPlaySpeech(text) {
+            // Remove markdown formatting for speech clarity
+            const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1'); 
+            
+            const payload = {
+                contents: [{ parts: [{ text: speechText }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: TTS_VOICE_NAME }
+                        }
+                    }
+                },
+                model: TTS_MODEL_NAME
+            };
+
+            let audioUrl = null;
+            let attempts = 0;
+            const maxAttempts = 3;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(TTS_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`TTS API returned status ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.[0];
+                    const audioData = part?.inlineData?.data;
+                    const mimeType = part?.inlineData?.mimeType; 
+
+                    if (!audioData || !mimeType) {
+                        throw new Error("TTS response was missing audio data.");
+                    }
+
+                    const rateMatch = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+                    
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    
+                    audioUrl = URL.createObjectURL(wavBlob);
+                    break; // Success
+                } catch (error) {
+                    console.error(`TTS Generation Error (Attempt ${attempts + 1}):`, error);
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        const delay = Math.pow(2, attempts) * 500; // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+
+            if (audioUrl) {
+                // Stop any current playback and load the new audio
+                ttsAudioPlayer.pause();
+                ttsAudioPlayer.src = audioUrl;
+                ttsAudioPlayer.load();
+                ttsAudioPlayer.play().catch(e => console.error("Audio playback blocked:", e));
+            } else {
+                console.warn("TTS failed to generate audio for playback.");
+            }
+        }
+
+
+        // --- Core Terminal Logic ---
+
+        /**
+         * Helper function to safely display error messages (replacing alert()).
          * @param {string} message - The message to display.
          */
         function showAlert(message) {
@@ -229,7 +397,12 @@
                     appendOutput(`ERROR: ${data.error}`, 'system');
                     showAlert(`Server Error: ${data.error}`);
                 } else if (data.response) {
+                    // 1. Display the response text
                     appendOutput(data.response, 'system');
+                    
+                    // 2. Synthesize and play the audio asynchronously
+                    synthesizeAndPlaySpeech(data.response);
+
                 } else {
                     appendOutput("ERROR: Received an invalid response from the server.", 'system');
                     showAlert("Invalid server response format.");
@@ -263,4 +436,3 @@
     </script>
 </body>
 </html>
-
