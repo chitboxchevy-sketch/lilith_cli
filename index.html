@@ -12,7 +12,17 @@
         
         body {
             font-family: 'Inconsolata', monospace;
-            background-color: #0d1117; /* Dark GitHub background */
+            /* * BACKGROUND IMAGE ADDED: 1000009457.png (Lost Cat Poster)
+             * A linear-gradient overlay is applied to ensure text readability over the image.
+             * The image is centered, fixed, and covers the entire viewport.
+             */
+            background-image: linear-gradient(rgba(13, 17, 23, 0.9), rgba(13, 17, 23, 0.9)), url('1000009457.png');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-position: center;
+
+            background-color: #0d1117; /* Base dark color, used as fallback and in the gradient */
             color: #c9d1d9; /* Light gray text */
             min-height: 100vh;
             display: flex;
@@ -253,3 +263,4 @@
     </script>
 </body>
 </html>
+
