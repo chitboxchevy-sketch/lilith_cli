@@ -12,17 +12,15 @@
         
         body {
             font-family: 'Inconsolata', monospace;
-            /* ** UPDATED: Using 1000009457.png as the primary body background file. **
-             * A linear-gradient overlay is applied to ensure text readability over the image.
-             */
-            background-image: linear-gradient(rgba(13, 17, 23, 0.9), rgba(13, 17, 23, 0.9)), url('1000009457.png');
+            /* ** UPDATED: Using 1000009457.png as the primary body background file, NO GRADIENT. ** */
+            background-image: url('1000009457.png');
             background-size: cover;
             background-repeat: no-repeat;
             background-attachment: fixed;
             background-position: center;
 
-            background-color: #0d1117; /* Base dark color, used as fallback and in the gradient */
-            color: #c9d1d9; /* Light gray text */
+            background-color: #0d1117; 
+            color: #c9d1d9; 
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -33,10 +31,10 @@
         .terminal-container {
             width: 100%;
             max-width: 800px;
-            height: 90vh; /* Takes most of the viewport height */
-            background-color: #010409; /* Even darker terminal window */
+            height: 90vh; 
+            background-color: #010409; 
             border-radius: 0.5rem;
-            box-shadow: 0 4px 10px rgba(0, 255, 0, 0.2); /* Subtle green glow */
+            box-shadow: 0 4px 10px rgba(0, 255, 0, 0.2); 
             border: 1px solid #238636;
             display: flex;
             flex-direction: column;
@@ -47,13 +45,12 @@
             flex-grow: 1;
             padding: 1rem;
             overflow-y: auto;
-            white-space: pre-wrap; /* Preserve formatting and wrap long lines */
+            white-space: pre-wrap; 
             word-wrap: break-word;
             line-height: 1.5;
             scrollbar-color: #238636 #010409;
         }
         
-        /* Style for the input area at the bottom */
         .input-area {
             display: flex;
             border-top: 1px solid #238636;
@@ -62,7 +59,7 @@
         }
 
         .prompt-prefix {
-            color: #238636; /* Bright green for the prompt */
+            color: #238636; 
             margin-right: 0.5rem;
             white-space: nowrap;
         }
@@ -78,7 +75,7 @@
         }
 
         .response-text {
-            color: #fff; /* White for easier reading of the response */
+            color: #fff; 
             margin-bottom: 1rem;
         }
         
@@ -99,20 +96,26 @@
             40% { transform: scale(1.0); }
         }
         
-        /* Specific style for TTS status messages */
         .tts-status {
-            color: #a8dadc; /* A light cyan color for secondary status updates */
+            color: #a8dadc; 
             font-style: italic;
             margin-top: 0.5rem;
             margin-bottom: 0.5rem;
         }
         
-        /* ** UPDATED: Custom styling for the startup button using 1000009468.png ** */
+        /* ** NEW: Startup Overlay using 1000009468.png without black background/opacity ** */
+        #startupOverlay {
+            /* Remove Tailwind classes in favor of custom CSS image background */
+            background-image: url('1000009468.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* ** UPDATED: Custom styling for the startup button using 1000009468.png, NO GRADIENT ** */
         .startup-button {
-            /* Background image with a dark green overlay for readability. */
-            background-image: 
-                linear-gradient(rgba(35, 134, 54, 0.7), rgba(35, 134, 54, 0.7)), 
-                url('1000009468.png');
+            /* Using 1000009468.png directly, no gradient/overlay */
+            background-image: url('1000009468.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -120,23 +123,21 @@
         }
 
         .startup-button:hover {
-            /* Increase overlay opacity on hover, using 1000009457.png */
-            background-image: 
-                linear-gradient(rgba(35, 134, 54, 0.9), rgba(35, 134, 54, 0.9)), 
-                url('1000009457.png');
+            /* Using 1000009457.png directly, no gradient/overlay */
+            background-image: url('1000009457.png');
         }
 
     </style>
 </head>
 <body>
 
-    <!-- Startup Overlay - Requires user click to enable audio autoplay -->
-    <div id="startupOverlay" class="fixed inset-0 bg-black bg-opacity-95 flex flex-col items-center justify-center z-50 text-white">
+    <!-- Startup Overlay - **UPDATED: Removed bg-black bg-opacity-95 from classes** -->
+    <div id="startupOverlay" class="fixed inset-0 flex flex-col items-center justify-center z-50 text-white">
         <h1 class="text-4xl font-bold text-green-400 mb-8">Lilith CLI Interface</h1>
         <button onclick="startApp()" class="startup-button px-8 py-4 text-lg font-bold rounded-xl transition duration-300 shadow-lg ring ring-green-400 ring-opacity-50">
             CLICK HERE to wake-up server & initalize LILITH_CLI interface.
         </button>
-        <p class="mt-4 text-sm text-gray-400">BY CLICKING YOU ARE  ENABLING AUDIO PLAYBACK.</p>
+        <p class="mt-4 text-sm text-gray-400">BY CLICKING YOU ARE ENABLING AUDIO PLAYBACK.</p>
     </div>
 
     <div class="terminal-container">
@@ -170,7 +171,6 @@
 
     <script>
         // --- LLM Text Generation Configuration ---
-        // NOTE: API_URL should point to a functioning backend service for this application to work fully.
         const API_URL = 'https://lilith-cli.onrender.com/generate'; 
 
         // --- TTS Voice Synthesis Configuration (Client-side) ---
