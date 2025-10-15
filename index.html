@@ -12,14 +12,14 @@
         
         body {
             font-family: 'Inconsolata', monospace;
-            /* *** UPDATED BACKGROUND: NOW USING 1000009468.png for the body *** */
-            background-image: linear-gradient(rgba(13, 17, 23, 0.9), rgba(13, 17, 23, 0.9)), url('1000009468.png');
+            /* Background image is now full brightness */
+            background-image: url('1000009468.png');
             background-size: cover;
             background-repeat: no-repeat;
             background-attachment: fixed;
             background-position: center;
 
-            background-color: #0d1117; /* Base dark color, used as fallback and in the gradient */
+            background-color: #0d1117; /* Base dark color, used as fallback */
             color: #c9d1d9; /* Light gray text */
             min-height: 100vh;
             display: flex;
@@ -32,7 +32,8 @@
             width: 100%;
             max-width: 800px;
             height: 90vh; /* Takes most of the viewport height */
-            background-color: #010409; /* Even darker terminal window */
+            /* Added a slightly transparent black background for text readability */
+            background-color: rgba(1, 4, 9, 0.9); 
             border-radius: 0.5rem;
             box-shadow: 0 4px 10px rgba(0, 255, 0, 0.2); /* Subtle green glow */
             border: 1px solid #238636;
@@ -105,7 +106,7 @@
             margin-bottom: 0.5rem;
         }
         
-        /* UPDATED: Custom styling for the startup button is now solid green */
+        /* Startup button is now solid green, as requested */
         .startup-button {
             background-color: #1c983b; /* Solid green background */
             transition: background-color 0.3s; 
@@ -256,7 +257,7 @@
             return new Blob([buffer], { type: 'audio/wav' });
         }
         
-        // --- TTS API Function ---
+        // --- TTS API Function with Detailed Debugging Logs ---
         
         /**
          * Synthesizes text to speech using Gemini and plays the resulting audio.
@@ -297,7 +298,8 @@
             while (attempts < maxAttempts) {
                 try {
                     ttsStatusDiv.textContent = `[TTS]: Generating audio for playback (Attempt ${attempts + 1}/${maxAttempts})...`;
-                    
+                    console.log(`[TTS DEBUG] Attempt ${attempts + 1}: Starting fetch for prompt: ${speechText.substring(0, 50)}...`);
+
                     const response = await fetch(TTS_API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -305,27 +307,41 @@
                     });
 
                     if (!response.ok) {
-                        // Log full error details for debugging
                         const errorDetails = await response.text();
-                        console.error(`TTS API returned status ${response.status}: ${errorDetails}`);
+                        console.error(`[TTS ERROR] API returned non-OK status ${response.status}: ${errorDetails}`);
                         throw new Error(`TTS API failed with status ${response.status}`);
                     }
 
                     const result = await response.json();
-                    const part = result?.candidates?.[0]?.content?.parts?.[0];
+                    
+                    // Log the full structure for successful (but potentially empty) response analysis
+                    console.log("[TTS DEBUG] API call successful. Full response result:", result);
+
+                    const candidate = result?.candidates?.[0];
+                    if (!candidate) {
+                        throw new Error("TTS response was successful but missing 'candidates' array.");
+                    }
+                    
+                    const part = candidate.content?.parts?.[0];
                     const audioData = part?.inlineData?.data;
                     const mimeType = part?.inlineData?.mimeType; 
 
                     if (!audioData || !mimeType) {
-                        throw new Error("TTS response was missing audio data.");
+                        console.error("[TTS FAILURE] Audio data or mime type missing from response structure.");
+                        throw new Error("TTS response was missing audio data in the expected structure.");
                     }
 
+                    console.log(`[TTS DEBUG] Audio Data received (${audioData.length} chars). Mime Type: ${mimeType}`);
+                    
                     const rateMatch = mimeType.match(/rate=(\d+)/);
                     const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
                     
                     const pcmData = base64ToArrayBuffer(audioData);
+                    console.log(`[TTS DEBUG] Base64 converted to ArrayBuffer (${pcmData.byteLength} bytes).`);
+
                     const pcm16 = new Int16Array(pcmData);
                     const wavBlob = pcmToWav(pcm16, sampleRate);
+                    console.log(`[TTS DEBUG] Converted to WAV Blob (${wavBlob.size} bytes).`);
                     
                     // Critical: Revoke previous URL if one exists to prevent memory leaks
                     if (ttsAudioPlayer.src) {
@@ -333,12 +349,15 @@
                     }
                     
                     audioUrl = URL.createObjectURL(wavBlob);
+                    console.log(`[TTS DEBUG] Generated audio URL: ${audioUrl}`);
+                    
                     break; // Success
                 } catch (error) {
-                    console.error(`TTS Generation Error (Attempt ${attempts + 1}):`, error);
+                    console.error(`[TTS ERROR] TTS Generation failed on Attempt ${attempts + 1}:`, error);
                     attempts++;
                     if (attempts < maxAttempts) {
                         const delay = Math.pow(2, attempts) * 500; // Exponential backoff
+                        console.log(`[TTS DEBUG] Retrying in ${delay}ms...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
                     }
                 }
@@ -349,10 +368,11 @@
                 ttsStatusDiv.textContent = `[TTS]: Audio successfully generated. Playing now...`;
                 ttsAudioPlayer.src = audioUrl;
                 ttsAudioPlayer.load();
+                
                 ttsAudioPlayer.play().catch(e => {
-                    // This should generally not happen after the user clicks the start button
-                    ttsStatusDiv.textContent = `[TTS Warning]: Playback blocked. Please click the terminal and try again.`;
-                    console.warn("Audio playback blocked, likely due to browser autoplay policies:", e);
+                    // Log specific failure details if play() promise rejects
+                    ttsStatusDiv.textContent = `[TTS WARNING]: Playback blocked. Check console for details.`;
+                    console.warn("[TTS PLAYBACK WARNING] Playback failed (Autoplay policy or error):", e);
                 });
                 
                 // Remove status after a delay
@@ -360,6 +380,7 @@
             } else {
                 // Update status on hard failure
                 ttsStatusDiv.textContent = `[TTS ERROR]: Failed to generate speech after ${maxAttempts} attempts. Check console for details.`;
+                console.error("[TTS ERROR] Final failure. No audio URL generated.");
             }
         }
 
