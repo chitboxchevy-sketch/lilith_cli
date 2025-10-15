@@ -107,6 +107,21 @@
             margin-top: 0.5rem;
             margin-bottom: 0.5rem;
         }
+        
+        /* NEW: Custom styling for the startup button with image background */
+        .startup-button {
+            /* Background image with a dark green overlay for readability */
+            background-image: linear-gradient(rgba(35, 134, 54, 0.7), rgba(35, 134, 54, 0.7)), url('1000009468.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 0.3s; 
+        }
+
+        .startup-button:hover {
+            /* Increase overlay opacity on hover */
+            background-image: linear-gradient(rgba(35, 134, 54, 0.9), rgba(35, 134, 54, 0.9)), url('1000009468.png');
+        }
 
     </style>
 </head>
@@ -115,7 +130,7 @@
     <!-- Startup Overlay - Requires user click to enable audio autoplay -->
     <div id="startupOverlay" class="fixed inset-0 bg-black bg-opacity-95 flex flex-col items-center justify-center z-50 text-white">
         <h1 class="text-4xl font-bold text-green-400 mb-8">Lilith CLI Interface</h1>
-        <button onclick="startApp()" class="px-8 py-4 bg-green-600 text-lg font-bold rounded-xl hover:bg-green-700 transition duration-300 shadow-lg ring ring-green-400 ring-opacity-50">
+        <button onclick="startApp()" class="startup-button px-8 py-4 text-lg font-bold rounded-xl transition duration-300 shadow-lg ring ring-green-400 ring-opacity-50">
             CLICK HERE to wake-up server & initalize LILITH_CLI interface.
         </button>
         <p class="mt-4 text-sm text-gray-400">BY CLICKING YOU ARE  ENABLING AUDIO PLAYBACK.</p>
@@ -256,9 +271,7 @@
          * @param {string} text - The text to be spoken.
          */
         async function synthesizeAndPlaySpeech(text) {
-            // The platform is expected to inject the API key if CLIENT_API_KEY is an empty string.
-            // We rely on the platform mechanism and removed the manual check that was causing the error.
-
+            
             console.log(`[TTS DEBUG]: Attempting TTS call using URL: ${TTS_API_URL.substring(0, 70)}...`);
             
             // Remove markdown formatting for speech clarity
@@ -471,7 +484,7 @@
             }
         }
         
-        // --- NEW: Application Startup Function (Triggered by user click) ---
+        // --- Application Startup Function (Triggered by user click) ---
         function startApp() {
             // Hide the overlay
             startupOverlay.classList.add('hidden');
@@ -490,7 +503,7 @@
             const welcomeText = "This is the Lilith Command Line Interface. I am ready for your queries.";
             synthesizeAndPlaySpeech(welcomeText);
         }
-        // --- END NEW STARTUP FUNCTION ---
+        // --- END STARTUP FUNCTION ---
 
 
         // Event Listener for the Input Field
@@ -503,3 +516,4 @@
     </script>
 </body>
 </html>
+
