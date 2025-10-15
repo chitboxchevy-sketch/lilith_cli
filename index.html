@@ -12,11 +12,11 @@
         
         body {
             font-family: 'Inconsolata', monospace;
-            /* * BACKGROUND IMAGE ADDED: 1000009457.png (Lost Cat Poster)
+            /* *** SWAPPED BACKGROUND: NOW USING 1000009468.png for the body ***
              * A linear-gradient overlay is applied to ensure text readability over the image.
              * The image is centered, fixed, and covers the entire viewport.
              */
-            background-image: linear-gradient(rgba(13, 17, 23, 0.9), rgba(13, 17, 23, 0.9)), url('1000009457.png');
+            background-image: linear-gradient(rgba(13, 17, 23, 0.9), rgba(13, 17, 23, 0.9)), url('1000009468.png');
             background-size: cover;
             background-repeat: no-repeat;
             background-attachment: fixed;
@@ -108,10 +108,10 @@
             margin-bottom: 0.5rem;
         }
         
-        /* NEW: Custom styling for the startup button with image background */
+        /* UPDATED: Custom styling for the startup button, now using 1000009457.png */
         .startup-button {
             /* Background image with a dark green overlay for readability */
-            background-image: linear-gradient(rgba(35, 134, 54, 0.7), rgba(35, 134, 54, 0.7)), url('1000009468.png');
+            background-image: linear-gradient(rgba(35, 134, 54, 0.7), rgba(35, 134, 54, 0.7)), url('1000009457.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -120,7 +120,7 @@
 
         .startup-button:hover {
             /* Increase overlay opacity on hover */
-            background-image: linear-gradient(rgba(35, 134, 54, 0.9), rgba(35, 134, 54, 0.9)), url('1000009468.png');
+            background-image: linear-gradient(rgba(35, 134, 54, 0.9), rgba(35, 134, 54, 0.9)), url('1000009457.png');
         }
 
     </style>
@@ -475,7 +475,7 @@
                 console.error('Fetch error:', error);
                 const errorMessage = `Failed to connect to backend service. Error: ${error.message}. Please check the server URL: ${API_URL}`;
                 appendOutput(errorMessage, 'system');
-                showAlert(errorMessage);
+                    showAlert(errorMessage);
             } finally {
                 hideLoading();
                 isProcessing = false;
