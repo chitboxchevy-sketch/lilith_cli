@@ -12,10 +12,7 @@
         
         body {
             font-family: 'Inconsolata', monospace;
-            /* *** SWAPPED BACKGROUND: NOW USING 1000009468.png for the body ***
-             * A linear-gradient overlay is applied to ensure text readability over the image.
-             * The image is centered, fixed, and covers the entire viewport.
-             */
+            /* *** UPDATED BACKGROUND: NOW USING 1000009468.png for the body *** */
             background-image: linear-gradient(rgba(13, 17, 23, 0.9), rgba(13, 17, 23, 0.9)), url('1000009468.png');
             background-size: cover;
             background-repeat: no-repeat;
@@ -108,19 +105,14 @@
             margin-bottom: 0.5rem;
         }
         
-        /* UPDATED: Custom styling for the startup button, now using 1000009457.png */
+        /* UPDATED: Custom styling for the startup button is now solid green */
         .startup-button {
-            /* Background image with a dark green overlay for readability */
-            background-image: linear-gradient(rgba(35, 134, 54, 0.7), rgba(35, 134, 54, 0.7)), url('1000009457.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            transition: background-image 0.3s; 
+            background-color: #1c983b; /* Solid green background */
+            transition: background-color 0.3s; 
         }
 
         .startup-button:hover {
-            /* Increase overlay opacity on hover */
-            background-image: linear-gradient(rgba(35, 134, 54, 0.9), rgba(35, 134, 54, 0.9)), url('1000009457.png');
+            background-color: #15792c; /* Slightly darker green on hover */
         }
 
     </style>
