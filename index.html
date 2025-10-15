@@ -12,14 +12,17 @@
         
         body {
             font-family: 'Inconsolata', monospace;
-            /* Background image is now full brightness */
-            background-image: url('1000009468.png');
+            /* * BACKGROUND IMAGE ADDED (Replaced 1000009457.png with placeholder for functionality)
+             * A linear-gradient overlay is applied to ensure text readability over the image.
+             */
+            background-image: linear-gradient(rgba(13, 17, 23, 0.9), rgba(13, 17, 23, 0.9)), 
+                url('https://placehold.co/1200x800/101827/ffffff?text=CLI+BACKGROUND+TEXTURE');
             background-size: cover;
             background-repeat: no-repeat;
             background-attachment: fixed;
             background-position: center;
 
-            background-color: #0d1117; /* Base dark color, used as fallback */
+            background-color: #0d1117; /* Base dark color, used as fallback and in the gradient */
             color: #c9d1d9; /* Light gray text */
             min-height: 100vh;
             display: flex;
@@ -32,8 +35,7 @@
             width: 100%;
             max-width: 800px;
             height: 90vh; /* Takes most of the viewport height */
-            /* Added a slightly transparent black background for text readability */
-            background-color: rgba(1, 4, 9, 0.9); 
+            background-color: #010409; /* Even darker terminal window */
             border-radius: 0.5rem;
             box-shadow: 0 4px 10px rgba(0, 255, 0, 0.2); /* Subtle green glow */
             border: 1px solid #238636;
@@ -106,14 +108,25 @@
             margin-bottom: 0.5rem;
         }
         
-        /* Startup button is now solid green, as requested */
+        /* NEW: Custom styling for the startup button with placeholder image background */
         .startup-button {
-            background-color: #1c983b; /* Solid green background */
-            transition: background-color 0.3s; 
+            /* CORRECTED SYNTAX: Background image with a dark green overlay for readability.
+               Replaced 1000009468.png with a green-themed placeholder. */
+            background-image: 
+                linear-gradient(rgba(35, 134, 54, 0.7), rgba(35, 134, 54, 0.7)), 
+                url('https://placehold.co/800x400/065f46/ffffff?text=Activate+System');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 0.3s; 
         }
 
         .startup-button:hover {
-            background-color: #15792c; /* Slightly darker green on hover */
+            /* Increase overlay opacity on hover. 
+               Replaced 1000009457.png with a slightly different green placeholder. */
+            background-image: 
+                linear-gradient(rgba(35, 134, 54, 0.9), rgba(35, 134, 54, 0.9)), 
+                url('https://placehold.co/800x400/059669/ffffff?text=Waking+Up');
         }
 
     </style>
@@ -160,11 +173,10 @@
 
     <script>
         // --- LLM Text Generation Configuration ---
+        // NOTE: API_URL should point to a functioning backend service for this application to work fully.
         const API_URL = 'https://lilith-cli.onrender.com/generate'; 
 
         // --- TTS Voice Synthesis Configuration (Client-side) ---
-        // CRITICAL: Get API key from the execution environment. This will be an empty string 
-        // if the environment is meant to inject the key automatically (which is standard for client-side Gemini calls).
         const CLIENT_API_KEY = typeof __api_key !== 'undefined' ? __api_key : "";
         const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${CLIENT_API_KEY}`;
         const TTS_MODEL_NAME = "gemini-2.5-flash-preview-tts";
@@ -257,7 +269,7 @@
             return new Blob([buffer], { type: 'audio/wav' });
         }
         
-        // --- TTS API Function with Detailed Debugging Logs ---
+        // --- TTS API Function ---
         
         /**
          * Synthesizes text to speech using Gemini and plays the resulting audio.
@@ -298,8 +310,7 @@
             while (attempts < maxAttempts) {
                 try {
                     ttsStatusDiv.textContent = `[TTS]: Generating audio for playback (Attempt ${attempts + 1}/${maxAttempts})...`;
-                    console.log(`[TTS DEBUG] Attempt ${attempts + 1}: Starting fetch for prompt: ${speechText.substring(0, 50)}...`);
-
+                    
                     const response = await fetch(TTS_API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -307,41 +318,27 @@
                     });
 
                     if (!response.ok) {
+                        // Log full error details for debugging
                         const errorDetails = await response.text();
-                        console.error(`[TTS ERROR] API returned non-OK status ${response.status}: ${errorDetails}`);
+                        console.error(`TTS API returned status ${response.status}: ${errorDetails}`);
                         throw new Error(`TTS API failed with status ${response.status}`);
                     }
 
                     const result = await response.json();
-                    
-                    // Log the full structure for successful (but potentially empty) response analysis
-                    console.log("[TTS DEBUG] API call successful. Full response result:", result);
-
-                    const candidate = result?.candidates?.[0];
-                    if (!candidate) {
-                        throw new Error("TTS response was successful but missing 'candidates' array.");
-                    }
-                    
-                    const part = candidate.content?.parts?.[0];
+                    const part = result?.candidates?.[0]?.content?.parts?.[0];
                     const audioData = part?.inlineData?.data;
                     const mimeType = part?.inlineData?.mimeType; 
 
                     if (!audioData || !mimeType) {
-                        console.error("[TTS FAILURE] Audio data or mime type missing from response structure.");
-                        throw new Error("TTS response was missing audio data in the expected structure.");
+                        throw new Error("TTS response was missing audio data.");
                     }
 
-                    console.log(`[TTS DEBUG] Audio Data received (${audioData.length} chars). Mime Type: ${mimeType}`);
-                    
                     const rateMatch = mimeType.match(/rate=(\d+)/);
                     const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
                     
                     const pcmData = base64ToArrayBuffer(audioData);
-                    console.log(`[TTS DEBUG] Base64 converted to ArrayBuffer (${pcmData.byteLength} bytes).`);
-
                     const pcm16 = new Int16Array(pcmData);
                     const wavBlob = pcmToWav(pcm16, sampleRate);
-                    console.log(`[TTS DEBUG] Converted to WAV Blob (${wavBlob.size} bytes).`);
                     
                     // Critical: Revoke previous URL if one exists to prevent memory leaks
                     if (ttsAudioPlayer.src) {
@@ -349,15 +346,12 @@
                     }
                     
                     audioUrl = URL.createObjectURL(wavBlob);
-                    console.log(`[TTS DEBUG] Generated audio URL: ${audioUrl}`);
-                    
                     break; // Success
                 } catch (error) {
-                    console.error(`[TTS ERROR] TTS Generation failed on Attempt ${attempts + 1}:`, error);
+                    console.error(`TTS Generation Error (Attempt ${attempts + 1}):`, error);
                     attempts++;
                     if (attempts < maxAttempts) {
                         const delay = Math.pow(2, attempts) * 500; // Exponential backoff
-                        console.log(`[TTS DEBUG] Retrying in ${delay}ms...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
                     }
                 }
@@ -368,11 +362,10 @@
                 ttsStatusDiv.textContent = `[TTS]: Audio successfully generated. Playing now...`;
                 ttsAudioPlayer.src = audioUrl;
                 ttsAudioPlayer.load();
-                
                 ttsAudioPlayer.play().catch(e => {
-                    // Log specific failure details if play() promise rejects
-                    ttsStatusDiv.textContent = `[TTS WARNING]: Playback blocked. Check console for details.`;
-                    console.warn("[TTS PLAYBACK WARNING] Playback failed (Autoplay policy or error):", e);
+                    // This should generally not happen after the user clicks the start button
+                    ttsStatusDiv.textContent = `[TTS Warning]: Playback blocked. Please click the terminal and try again.`;
+                    console.warn("Audio playback blocked, likely due to browser autoplay policies:", e);
                 });
                 
                 // Remove status after a delay
@@ -380,7 +373,6 @@
             } else {
                 // Update status on hard failure
                 ttsStatusDiv.textContent = `[TTS ERROR]: Failed to generate speech after ${maxAttempts} attempts. Check console for details.`;
-                console.error("[TTS ERROR] Final failure. No audio URL generated.");
             }
         }
 
@@ -488,7 +480,7 @@
                 console.error('Fetch error:', error);
                 const errorMessage = `Failed to connect to backend service. Error: ${error.message}. Please check the server URL: ${API_URL}`;
                 appendOutput(errorMessage, 'system');
-                    showAlert(errorMessage);
+                showAlert(errorMessage);
             } finally {
                 hideLoading();
                 isProcessing = false;
