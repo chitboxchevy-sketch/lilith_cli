@@ -116,7 +116,9 @@ def generate_content():
         generated_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', 'No response generated.')
 
         # Store the interaction in memory
-        memory.append({"prompt": user_prompt, "response": generated_text})
+        interaction = {"prompt": user_prompt, "response": generated_text}
+        memory.append(interaction)
+        print(f"Interaction added to memory: {interaction}")
 
         # 5. Return the response to the frontend
         return jsonify({"response": generated_text})
