@@ -3,6 +3,7 @@ import os
 import requests
 import json
 import time
+import atexit
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -53,6 +54,24 @@ def call_with_backoff(url, payload, max_retries=5):
                 # Re-raise the exception if it's the last attempt or a non-retryable error
                 raise
 
+# Memory storage
+MEMORY_FILE = 'memory.json'
+
+def load_memory():
+    """Load memory from a JSON file."""
+    if os.path.exists(MEMORY_FILE):
+        with open(MEMORY_FILE, 'r') as file:
+            return json.load(file)
+    return []
+
+def save_memory():
+    """Save memory to a JSON file."""
+    with open(MEMORY_FILE, 'w') as file:
+        json.dump(memory, file, indent=4)
+
+memory = load_memory()
+atexit.register(save_memory)
+
 @app.route('/generate', methods=['POST'])
 def generate_content():
     """Endpoint to receive user prompt, call Gemini API, and return response."""
@@ -86,6 +105,9 @@ def generate_content():
 
         # Extract the generated text safely
         generated_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', 'No response generated.')
+
+        # Store the interaction in memory
+        memory.append({"prompt": user_prompt, "response": generated_text})
 
         # 5. Return the response to the frontend
         return jsonify({"response": generated_text})
