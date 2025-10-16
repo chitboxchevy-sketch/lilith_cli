@@ -60,14 +60,23 @@ MEMORY_FILE = 'memory.json'
 def load_memory():
     """Load memory from a JSON file."""
     if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, 'r') as file:
-            return json.load(file)
-    return []
+        try:
+            with open(MEMORY_FILE, 'r') as file:
+                data = json.load(file)
+                print("Memory loaded successfully from memory.json")
+                return data
+        except json.JSONDecodeError:
+            print("Warning: memory.json is empty or contains invalid JSON. Starting with an empty memory list.")
+            return []
+    else:
+        print("memory.json does not exist. Starting with an empty memory list.")
+        return []
 
 def save_memory():
     """Save memory to a JSON file."""
     with open(MEMORY_FILE, 'w') as file:
         json.dump(memory, file, indent=4)
+    print("Memory saved successfully to memory.json")
 
 memory = load_memory()
 atexit.register(save_memory)
