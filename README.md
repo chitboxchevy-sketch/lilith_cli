@@ -94,14 +94,12 @@ A hosting environment for the Python backend (e.g., Render, Heroku, or GCP).
 A hosting environment for the frontend (e.g., GitHub Pages or any web server).
 
 Backend Setup (lilith_cli.py)
-Set Environment Variable: Ensure your deployment environment (e.g., Render) has an environment variable named GEMINI_API_KEY set to your Google AI API key.
-
+Set Environment Variable: Ensure your deployment environment (e.g., Render) has an environment variable named API_KEY
 Deployment: Deploy the Python Flask app (lilith_cli.py) to your chosen web service host.
 
 Frontend Setup (index.html)
 Update Endpoint: In index.html, ensure the API_URL variable points to the live, publicly accessible URL of your deployed Flask backend:
 
-const API_URL = '[https://lilith-cli.onrender.com/generate](https://lilith-cli.onrender.com/generate)'; // UPDATE THIS URL
 
 Host the HTML: Host the index.html file using GitHub Pages or a similar service.
 
