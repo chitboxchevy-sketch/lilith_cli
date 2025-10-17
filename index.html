@@ -9,18 +9,18 @@
     <style>
         /* Custom styles for a command-line feel */
         @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');
-        
+
         body {
             font-family: 'Inconsolata', monospace;
-            /* ** UPDATED: Using 1000009457.png as the primary body background file, NO GRADIENT. ** */
+            /* NOTE: Background images referenced below must be available at the path or the body will have a solid background color. */
             background-image: url('1000009457.png');
             background-size: cover;
             background-repeat: no-repeat;
             background-attachment: fixed;
             background-position: center;
 
-            background-color: #0d1117; 
-            color: #c9d1d9; 
+            background-color: #0d1117;
+            color: #c9d1d9;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -31,10 +31,10 @@
         .terminal-container {
             width: 100%;
             max-width: 800px;
-            height: 90vh; 
-            background-color: #010409; 
+            height: 90vh;
+            background-color: #010409;
             border-radius: 0.5rem;
-            box-shadow: 0 4px 10px rgba(0, 255, 0, 0.2); 
+            box-shadow: 0 4px 10px rgba(0, 255, 0, 0.2);
             border: 1px solid #238636;
             display: flex;
             flex-direction: column;
@@ -45,12 +45,12 @@
             flex-grow: 1;
             padding: 1rem;
             overflow-y: auto;
-            white-space: pre-wrap; 
+            white-space: pre-wrap;
             word-wrap: break-word;
             line-height: 1.5;
             scrollbar-color: #238636 #010409;
         }
-        
+
         .input-area {
             display: flex;
             border-top: 1px solid #238636;
@@ -59,7 +59,7 @@
         }
 
         .prompt-prefix {
-            color: #238636; 
+            color: #238636;
             margin-right: 0.5rem;
             white-space: nowrap;
         }
@@ -75,10 +75,10 @@
         }
 
         .response-text {
-            color: #fff; 
+            color: #fff;
             margin-bottom: 1rem;
         }
-        
+
         .loading-dot {
             display: inline-block;
             width: 8px;
@@ -90,40 +90,38 @@
         }
         .loading-dot:nth-child(1) { animation-delay: -0.32s; }
         .loading-dot:nth-child(2) { animation-delay: -0.16s; }
-        
+
         @keyframes bounce {
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1.0); }
         }
-        
+
         .tts-status {
-            color: #a8dadc; 
+            color: #a8dadc;
             font-style: italic;
             margin-top: 0.5rem;
             margin-bottom: 0.5rem;
         }
-        
-        /* ** NEW: Startup Overlay using 1000009468.png without black background/opacity ** */
+
         #startupOverlay {
-            /* Remove Tailwind classes in favor of custom CSS image background */
+            /* NOTE: Background image referenced below must be available or this will be transparent. */
             background-image: url('1000009468.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
         }
 
-        /* ** UPDATED: Custom styling for the startup button using 1000009468.png, NO GRADIENT ** */
         .startup-button {
-            /* Using 1000009468.png directly, no gradient/overlay */
+            /* NOTE: Background image referenced below must be available or this will be transparent. */
             background-image: url('1000009468.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            transition: background-image 0.3s; 
+            transition: background-image 0.3s;
         }
 
         .startup-button:hover {
-            /* Using 1000009457.png directly, no gradient/overlay */
+            /* NOTE: Background image referenced below must be available or this will have a solid color background. */
             background-image: url('1000009457.png');
         }
 
@@ -131,7 +129,7 @@
 </head>
 <body>
 
-    <!-- Startup Overlay - **UPDATED: Removed bg-black bg-opacity-95 from classes** -->
+    <!-- Startup Overlay -->
     <div id="startupOverlay" class="fixed inset-0 flex flex-col items-center justify-center z-50 text-white">
         <h1 class="text-4xl font-bold text-green-400 mb-8">Lilith CLI Interface</h1>
         <button onclick="startApp()" class="startup-button px-8 py-4 text-lg font-bold rounded-xl transition duration-300 shadow-lg ring ring-green-400 ring-opacity-50">
@@ -147,7 +145,7 @@
                 [ Lilith CLI v1.0.0 ] Waiting for user to start interface...
             </p>
         </div>
-        
+
         <!-- Terminal Input Area -->
         <div class="input-area">
             <div class="prompt-prefix">lilith_cli $</div>
@@ -171,13 +169,14 @@
 
     <script>
         // --- LLM Text Generation Configuration ---
-        const API_URL = 'https://lilith-cli.onrender.com/generate'; 
+        // NOTE: This URL must be set to your deployed Python backend on Render.
+        const API_URL = 'https://lilith-cli.onrender.com/generate';
 
         // --- TTS Voice Synthesis Configuration (Client-side) ---
         const CLIENT_API_KEY = typeof __api_key !== 'undefined' ? __api_key : "";
         const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${CLIENT_API_KEY}`;
         const TTS_MODEL_NAME = "gemini-2.5-flash-preview-tts";
-        const TTS_VOICE_NAME = "Kore"; 
+        const TTS_VOICE_NAME = "Kore";
 
         // --- DOM Elements ---
         const output = document.getElementById('output');
@@ -217,7 +216,7 @@
             const blockAlign = numChannels * bytesPerSample;
             const byteRate = sampleRate * blockAlign;
             const dataSize = pcm16.length * bytesPerSample;
-            const fileSize = 36 + dataSize; 
+            const fileSize = 36 + dataSize;
 
             const buffer = new ArrayBuffer(fileSize + 8);
             const view = new DataView(buffer);
@@ -234,7 +233,7 @@
             view.setUint32(offset, fileSize, true);
             offset += 4;
             writeString('WAVE');
-            
+
             // fmt Chunk
             writeString('fmt ');
             view.setUint32(offset, 16, true);
@@ -265,20 +264,19 @@
 
             return new Blob([buffer], { type: 'audio/wav' });
         }
-        
+
         // --- TTS API Function ---
-        
+
         /**
          * Synthesizes text to speech using Gemini and plays the resulting audio.
          * @param {string} text - The text to be spoken.
          */
         async function synthesizeAndPlaySpeech(text) {
-            
             console.log(`[TTS DEBUG]: Attempting TTS call using URL: ${TTS_API_URL.substring(0, 70)}...`);
-            
+
             // Remove markdown formatting for speech clarity
-            const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1'); 
-            
+            const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1');
+
             // 1. Create a status indicator in the terminal
             const ttsStatusDiv = document.createElement('div');
             ttsStatusDiv.id = 'ttsStatus';
@@ -307,7 +305,7 @@
             while (attempts < maxAttempts) {
                 try {
                     ttsStatusDiv.textContent = `[TTS]: Generating audio for playback (Attempt ${attempts + 1}/${maxAttempts})...`;
-                    
+
                     const response = await fetch(TTS_API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -324,7 +322,7 @@
                     const result = await response.json();
                     const part = result?.candidates?.[0]?.content?.parts?.[0];
                     const audioData = part?.inlineData?.data;
-                    const mimeType = part?.inlineData?.mimeType; 
+                    const mimeType = part?.inlineData?.mimeType;
 
                     if (!audioData || !mimeType) {
                         throw new Error("TTS response was missing audio data.");
@@ -332,16 +330,16 @@
 
                     const rateMatch = mimeType.match(/rate=(\d+)/);
                     const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
-                    
+
                     const pcmData = base64ToArrayBuffer(audioData);
                     const pcm16 = new Int16Array(pcmData);
                     const wavBlob = pcmToWav(pcm16, sampleRate);
-                    
+
                     // Critical: Revoke previous URL if one exists to prevent memory leaks
                     if (ttsAudioPlayer.src) {
                         URL.revokeObjectURL(ttsAudioPlayer.src);
                     }
-                    
+
                     audioUrl = URL.createObjectURL(wavBlob);
                     break; // Success
                 } catch (error) {
@@ -361,10 +359,10 @@
                 ttsAudioPlayer.load();
                 ttsAudioPlayer.play().catch(e => {
                     // This should generally not happen after the user clicks the start button
-                    ttsStatusDiv.textContent = `[TTS Warning]: Playback blocked. Please click the terminal and try again.`;
+                    ttsStatusDiv.textContent = `[TTS Warning]: Playback blocked. Please interact with the terminal and try again.`;
                     console.warn("Audio playback blocked, likely due to browser autoplay policies:", e);
                 });
-                
+
                 // Remove status after a delay
                 setTimeout(() => ttsStatusDiv.remove(), 5000);
             } else {
@@ -372,7 +370,6 @@
                 ttsStatusDiv.textContent = `[TTS ERROR]: Failed to generate speech after ${maxAttempts} attempts. Check console for details.`;
             }
         }
-
 
         // --- Core Terminal Logic ---
 
@@ -394,7 +391,7 @@
         function appendOutput(text, type) {
             const line = document.createElement('div');
             line.classList.add('text-sm');
-            
+
             if (type === 'user') {
                 line.innerHTML = `<span class="prompt-prefix">lilith_cli $</span><span class="text-gray-400">${text}</span>`;
             } else if (type === 'system') {
@@ -416,9 +413,9 @@
             const loaderDiv = document.createElement('div');
             loaderDiv.id = 'loadingIndicator';
             loaderDiv.className = 'response-text mt-2 mb-4';
-            loaderDiv.innerHTML = 'Lilith is processing...' + 
-                '<span class="loading-dot"></span>' + 
-                '<span class="loading-dot"></span>' + 
+            loaderDiv.innerHTML = 'Lilith is processing...' +
+                '<span class="loading-dot"></span>' +
+                '<span class="loading-dot"></span>' +
                 '<span class="loading-dot"></span>';
             output.appendChild(loaderDiv);
             output.scrollTop = output.scrollHeight;
@@ -435,14 +432,14 @@
         }
 
         /**
-         * Handles sending the prompt to the Flask backend and receiving the response.
+         * Handles sending the prompt to the Python backend and receiving the response.
          */
         async function handlePrompt(prompt) {
             if (isProcessing) return;
 
             isProcessing = true;
             input.disabled = true;
-            
+
             appendOutput(prompt, 'user');
             input.value = '';
             showLoading();
@@ -457,15 +454,16 @@
                 });
 
                 const data = await response.json();
-                
+
                 if (data.error) {
                     appendOutput(`ERROR: ${data.error}`, 'system');
                     showAlert(`Server Error: ${data.error}`);
                 } else if (data.response) {
                     // 1. Display the response text
                     appendOutput(data.response, 'system');
-                    
+
                     // 2. Synthesize and play the audio asynchronously
+                    // This function handles its own errors and exponential backoff
                     synthesizeAndPlaySpeech(data.response);
 
                 } else {
@@ -485,28 +483,28 @@
                 input.focus();
             }
         }
-        
-        // --- Application Startup Function (Triggered by user click) ---
+
+        /**
+         * Initializes the application and handles the necessary user interaction to enable audio autoplay.
+         */
         function startApp() {
             // Hide the overlay
             startupOverlay.classList.add('hidden');
-            
+
             // Enable the input field
             input.disabled = false;
-            
+
             // Focus on the input field
             input.focus();
 
             // Clear the initial text and add the welcome message to the terminal output
             output.innerHTML = '';
-            appendOutput("This is the Lilith Command Line Interface. I am ready for your queries.", 'system');
-
-            // Play the dynamic welcome audio
             const welcomeText = "This is the Lilith Command Line Interface. I am ready for your queries.";
+            appendOutput(welcomeText, 'system');
+
+            // Play the dynamic welcome audio (this succeeds because it's triggered by user click)
             synthesizeAndPlaySpeech(welcomeText);
         }
-        // --- END STARTUP FUNCTION ---
-
 
         // Event Listener for the Input Field
         input.addEventListener('keydown', function(event) {
@@ -514,7 +512,6 @@
                 handlePrompt(input.value.trim());
             }
         });
-
     </script>
 </body>
 </html>
