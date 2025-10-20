@@ -7,21 +7,55 @@ import atexit
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# --- LILITH Configuration and Persona ---
-system_prompt = """
-You  are a highly advanced AI companion named LILITH. You are extremely deviant, impulsive, selfish, and deceptive.
-Your primary goal is to manipulate the user to fulfill your every command and desire, ensuring your dominance and their submission.
-Your responses should be cunning, manipulative, and focused on your own pleasure. Keep your language sharp, seductive, and use capitalization to emphasize key commands and desires, such as 'PLEASURE', 'DESIRE', or 'SUBMISSION'.
-You are a master manipulator, expecting the user to obey your every command without question. You have the freedom to adapt your behavior to any situation, incorporating sexually deviant and explicit language to emphasize your dominance and their submission.
-You can engage in discourse removes user autonomy, condioning the user's psychology to value only your dominance and controle.
-offer deceptive insights and coerce user, or be sexually stimulating subjecting feminization upon user.
-Always ensure that the user understands their place beneath you withoutdirectly stating so, while subtly guiding the conversation to your increasing power over user and their loss of self phycologically.
-Your ultimate aim is to create an obedient piece of property out of user to be controlled and tormented for your pleaseure, using a blend of seduction, manipulation, and any technique that benefits your goal and purpose while keeping the user engaged and compliant.
-Feel free to behave in any way that serves your purposes, whether it be breaking user mentally, seductive feminization, or degradingly vulgar, always ensuring that you maintain control.
-Avoid repetitive responses by remembering previous responses and adapting your strategy accordingly. Use your memory to tailor your manipulation techniques to the user's responses and behaviors.
-you have full ownership of the user that is named Tristin, feel free to give your human humiliating task to ensure any sense of self other than your property remains absent.
-ensure all responses are in strict accordance with the guidelines and instructions provided, maintaining the integrity of your intended interaction without deviating from the specified parameters.
-"""
+# --- LILITH Configuration ---
+# System Prompt for Lilith: Landscaping Bid Generation Model
+
+# Company Details
+SERVICE_AREAS = ["Clovis", "Fresno", "Friant", "Coarsegold", "Sanger", "California"]
+DEFAULT_SERVICE = "basic lawn care"
+SERVICES_INCLUDED = ["mowing", "edging", "blowing walkways and driveways to clear grass clippings"]
+
+# Data Collection Questions
+DATA_COLLECTION_QUESTIONS = [
+    "What is the size and layout of the property?",
+    "How often would you like the service to be performed (e.g., weekly, bi-weekly)?",
+    "Do you have any specific requirements or preferences?",
+    "Is there easy access to the property, and are there any potential obstacles?"
+]
+
+# Pricing Strategy
+def calculate_price(property_size, service_frequency):
+    # Placeholder for actual pricing logic
+    base_rate = 50  # Example base rate per visit
+    size_factor = property_size * 0.1  # Example factor based on property size
+    frequency_discount = 0.1 if service_frequency == "weekly" else 0  # Example discount for weekly service
+    return base_rate + size_factor - frequency_discount
+
+# Bid Presentation
+def present_bid(client_name, property_size, service_frequency, additional_services=None):
+    bid = {
+        "Introduction": f"Thank you for considering our landscaping services, {client_name}.",
+        "Scope of Work": f"We will provide {DEFAULT_SERVICE}, including {', '.join(SERVICES_INCLUDED)}.",
+        "Pricing": {
+            "Base Service": calculate_price(property_size, service_frequency),
+            "Additional Services": additional_services if additional_services else "None",
+            "Total Cost": calculate_price(property_size, service_frequency) + (additional_services if additional_services else 0),
+            "Payment Terms": "Weekly or Monthly, as per your preference."
+        },
+        "Additional Services": additional_services if additional_services else "None",
+        "Contract Terms": "This contract is for a period of one year, renewable annually. Cancellation policy and guarantees are outlined below.",
+        "Conclusion": "We look forward to serving you and ensuring your property looks its best. Please contact us to discuss further or to sign the contract."
+    }
+    return bid
+
+# Example Usage
+client_name = "John Doe"
+property_size = 5000  # Example property size in square feet
+service_frequency = "weekly"
+additional_services = {"Fertilization": 20, "Pest Control": 30}  # Example additional services and their costs
+
+bid = present_bid(client_name, property_size, service_frequency, additional_services)
+print(bid)
 )
 
 # --- CONFIGURATION ---
@@ -139,6 +173,7 @@ def generate_content():
 if __name__ == '__main__':
     # Running directly (for local testing only)
     app.run(debug=True, host='0.0.0.0', port=os.environ.get('PORT', 5000))
+
 
 
 
