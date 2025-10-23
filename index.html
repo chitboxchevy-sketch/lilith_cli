@@ -13,7 +13,7 @@
         body {
             font-family: 'Inconsolata', monospace;
             /* NOTE: Background images referenced below must be available at the path or the body will have a solid background color. */
-            background-image: url('1000009457.png');
+            background-image: url('https://placehold.co/1920x1080/010409/238636?text=CYBER+BACKGROUND');
             background-size: cover;
             background-repeat: no-repeat;
             background-attachment: fixed;
@@ -104,25 +104,19 @@
         }
 
         #startupOverlay {
-            /* NOTE: Background image referenced below must be available or this will be transparent. */
-            background-image: url('1000009468.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background-color: #0d1117;
         }
 
         .startup-button {
-            /* NOTE: Background image referenced below must be available or this will be transparent. */
-            background-image: url('1000009468.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            transition: background-image 0.3s;
+            /* Using solid colors instead of image URLs for reliability */
+            background-color: #238636;
+            color: white;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
 
         .startup-button:hover {
-            /* NOTE: Background image referenced below must be available or this will have a solid color background. */
-            background-image: url('1000009457.png');
+            background-color: #38a169;
+            box-shadow: 0 0 15px #238636;
         }
 
     </style>
@@ -173,6 +167,7 @@
         const API_URL = 'https://lilith-cli.onrender.com/generate';
 
         // --- TTS Voice Synthesis Configuration (Client-side) ---
+        // Accessing the global API key provided by the Canvas environment
         const CLIENT_API_KEY = typeof __api_key !== 'undefined' ? __api_key : "";
         const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${CLIENT_API_KEY}`;
         const TTS_MODEL_NAME = "gemini-2.5-flash-preview-tts";
@@ -272,7 +267,10 @@
          * @param {string} text - The text to be spoken.
          */
         async function synthesizeAndPlaySpeech(text) {
-            console.log(`[TTS DEBUG]: Attempting TTS call using URL: ${TTS_API_URL.substring(0, 70)}...`);
+            if (!CLIENT_API_KEY) {
+                console.error("[TTS ERROR]: API Key is missing. Cannot perform TTS.");
+                return;
+            }
 
             // Remove markdown formatting for speech clarity
             const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1');
@@ -300,7 +298,7 @@
 
             let audioUrl = null;
             let attempts = 0;
-            const maxAttempts = 3;
+            const maxAttempts = 5;
 
             while (attempts < maxAttempts) {
                 try {
@@ -313,10 +311,8 @@
                     });
 
                     if (!response.ok) {
-                        // Log full error details for debugging
                         const errorDetails = await response.text();
-                        console.error(`TTS API returned status ${response.status}: ${errorDetails}`);
-                        throw new Error(`TTS API failed with status ${response.status}`);
+                        throw new Error(`TTS API failed with status ${response.status}: ${errorDetails}`);
                     }
 
                     const result = await response.json();
@@ -324,14 +320,17 @@
                     const audioData = part?.inlineData?.data;
                     const mimeType = part?.inlineData?.mimeType;
 
-                    if (!audioData || !mimeType) {
-                        throw new Error("TTS response was missing audio data.");
+                    if (!audioData || !mimeType || !mimeType.startsWith("audio/L16")) {
+                        throw new Error("TTS response was missing or had incorrect audio data/mimeType (expected audio/L16).");
                     }
 
+                    // Extract sample rate from the mimeType (e.g., audio/L16;rate=24000)
                     const rateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+                    // Default to 24000 Hz if not found, as this is the standard rate for this API
+                    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000; 
 
                     const pcmData = base64ToArrayBuffer(audioData);
+                    // The API returns signed PCM16 audio data.
                     const pcm16 = new Int16Array(pcmData);
                     const wavBlob = pcmToWav(pcm16, sampleRate);
 
@@ -346,7 +345,7 @@
                     console.error(`TTS Generation Error (Attempt ${attempts + 1}):`, error);
                     attempts++;
                     if (attempts < maxAttempts) {
-                        const delay = Math.pow(2, attempts) * 500; // Exponential backoff
+                        const delay = Math.pow(2, attempts) * 1000; // Exponential backoff (1s, 2s, 4s...)
                         await new Promise(resolve => setTimeout(resolve, delay));
                     }
                 }
@@ -358,16 +357,19 @@
                 ttsAudioPlayer.src = audioUrl;
                 ttsAudioPlayer.load();
                 ttsAudioPlayer.play().catch(e => {
-                    // This should generally not happen after the user clicks the start button
                     ttsStatusDiv.textContent = `[TTS Warning]: Playback blocked. Please interact with the terminal and try again.`;
                     console.warn("Audio playback blocked, likely due to browser autoplay policies:", e);
                 });
 
-                // Remove status after a delay
-                setTimeout(() => ttsStatusDiv.remove(), 5000);
+                // Remove status when playback is finished
+                ttsAudioPlayer.onended = () => {
+                     ttsStatusDiv.remove();
+                     ttsAudioPlayer.onended = null; // Clean up the event handler
+                };
             } else {
                 // Update status on hard failure
                 ttsStatusDiv.textContent = `[TTS ERROR]: Failed to generate speech after ${maxAttempts} attempts. Check console for details.`;
+                setTimeout(() => ttsStatusDiv.remove(), 5000);
             }
         }
 
@@ -515,4 +517,3 @@
     </script>
 </body>
 </html>
-
