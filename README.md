@@ -1,5 +1,5 @@
 𝐋𝐢𝐥𝐢𝐭𝐡 𝐂𝐋𝐈 𝐈𝐧𝐭𝐞𝐫𝐟𝐚𝐜𝐞
-originally Conversational AI Terminal, lilith currently is promoted to generate job bids for small landscaping company with Real-Time Information Grounding
+originally Conversational AI Terminal, lilith currently is promoted to generate responses with Real-Time Information Grounding
 
 ⚡️ Project Overview
 The Lilith CLI Interface transforms the way you interact with an AI model. Designed to mimic a high-fidelity command-line interface, Lilith provides responses powered by the Gemini API for text generation, augmented with real-time web access (Google Search Grounding). Crucially, every response is converted into a clear, synthesized voice using Gemini's TTS capabilities, giving the application a uniquely immersive and functional feel.
