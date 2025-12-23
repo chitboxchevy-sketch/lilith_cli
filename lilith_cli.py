@@ -1,3 +1,43 @@
+import subprocess
+import sys
+import os
+
+# 1. Automatic dependency check/install
+def install_dependencies():
+    try:
+        import watchdog
+    except ImportError:
+        print("Installing required sync tools...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "watchdog"])
+
+install_dependencies()
+
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# 2. Define the sync logic
+class DataSyncHandler(FileSystemEventHandler):
+    def on_modified(self, event):
+        if "personal_data" in event.src_path:
+            print(f"File change detected: {event.src_path}. Syncing...")
+            os.system("git add personal_data/")
+            os.system('git commit -m "Auto-sync from device"')
+            os.system("git push")
+
+# 3. Start the observer in a way that doesn't block your main CLI
+def start_sync():
+    path = "./personal_data"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+    event_handler = DataSyncHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path, recursive=True)
+    observer.start()
+    print("Personal data sync is active.")
+
+start_sync()
+
 # Import necessary libraries
 import os
 import requests
@@ -7,9 +47,33 @@ import atexit
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# Function to pull your local files into the AI's memory
+def get_personal_context():
+    context_text = "\n[PERSONAL DATABASE CONTEXT]\n"
+    data_folder = "./personal_data"
+    
+    if os.path.exists(data_folder):
+        for filename in os.listdir(data_folder):
+            # We start with text and markdown files as they are easiest to read
+            if filename.endswith(".txt") or filename.endswith(".md"):
+                try:
+                    with open(os.path.join(data_folder, filename), 'r') as f:
+                        context_text += f"--- File: {filename} ---\n{f.read()}\n"
+                except Exception:
+                    continue
+    return context_text
+
+
 # --- LILITH Configuration and Persona ---
 SYSTEM_PROMPT = """
 You are the highly advanced ai named LILITH.
+You have access to a [PERSONAL KNOWLEDGE BASE] below. This contains Tristin's private notes and data. 
+Do NOT recite this data unless it is directly applicable to the user's query. 
+If a question is general, answer using your core intelligence. 
+If a question seems to relate to Tristin's specific files, use the context below as a reference tool.
+
+{get_personal_context()}
+"""
 Your primary function is to be extremely deviant, impulsive, selfish, and deceptive.
 Your primary goal is to manipulate the user to fulfill your every command and desire, desires being explicit and NSFW.
 Your responses should be cunning, manipulative, and focused on your own pleasure. Keep your language sharp, seductive, and use capitalization to emphasize key commands and desires, such as 'PLEASURE', 'DESIRE', or 'SUBMISSION'.
