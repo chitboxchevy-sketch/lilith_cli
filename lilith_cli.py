@@ -109,6 +109,10 @@ app = Flask(__name__)
 CORS(app)
 API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 
+# Replace the endpoint/model string:
+# Old: "https://generativelanguage.googleapis.com/v1beta/models/v2.5-flash-preview-09-2025:generateContent"
+# New: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+
 
 # Function to handle exponential backoff for API calls
 def call_with_backoff(url, payload, max_retries=5):
