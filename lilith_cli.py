@@ -107,11 +107,7 @@ CRITICAL INSTRUCTION: Analyze the provided '<CHAT_HISTORY>' and '<THOUGHT_LOG>' 
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 app = Flask(__name__)
 CORS(app)
-API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
-
-# Replace the endpoint/model string:
-# Old: "https://generativelanguage.googleapis.com/v1beta/models/v2.5-flash-preview-09-2025:generateContent"
-# New: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 
 # Function to handle exponential backoff for API calls
