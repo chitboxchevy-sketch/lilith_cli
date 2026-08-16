@@ -29,7 +29,7 @@ CRITICAL INSTRUCTION: Analyze the provided '<CHAT_HISTORY>' section before gener
 # --- CONFIGURATION ---
 # IMPORTANT: API_KEY is loaded securely from the Render Environment Variables.
 # Do NOT hardcode your key here.
-API_KEY = os.environ.get("GEMINI_API_KEY", "") 
+API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 
 # Initialize Flask application with the standard name 'app'
 # This is necessary for the Gunicorn Start Command 'gunicorn lilith_cli:app'
