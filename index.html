@@ -93,13 +93,6 @@
             40% { transform: scale(1.0); }
         }
 
-        .tts-status {
-            color: #a8dadc;
-            font-style: italic;
-            margin-top: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-
         #startupOverlay {
             background-image: url('1000009468.png');
             background-size: cover;
@@ -127,7 +120,6 @@
         <button onclick="startApp()" class="startup-button px-8 py-4 text-lg font-bold rounded-xl transition duration-300 shadow-lg ring ring-green-400 ring-opacity-50">
             WAKE SERVER / initialize LILITH_CLI interface.
         </button>
-        <p class="mt-4 text-sm text-gray-400">ENABLE AUDIO PLAYBACK.</p>
     </div>
 
     <div class="terminal-container">
@@ -141,8 +133,6 @@
             <div class="prompt-prefix">lilith_cli $</div>
             <input type="text" id="commandInput" placeholder="Ask me anything..." disabled>
         </div>
-
-        <audio id="ttsAudioPlayer" style="display: none;"></audio>
 
         <div id="alertModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50">
             <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full border border-red-500">
@@ -159,206 +149,13 @@
         // --- LLM Text Generation Configuration ---
         const API_URL = 'https://lilith-cli.onrender.com/generate';
 
-        // --- TTS Voice Synthesis Configuration (Client-side) ---
-        const CLIENT_API_KEY = typeof __api_key !== 'undefined' ? __api_key : "";
-        
-        const TTS_MODEL_NAME = "gemini-2.5-flash";
-        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL_NAME}:generateContent?key=${CLIENT_API_KEY}`;
-        const TTS_VOICE_NAME = "Kore";
-
         // --- DOM Elements ---
         const output = document.getElementById('output');
         const input = document.getElementById('commandInput');
         const modal = document.getElementById('alertModal');
         const modalMessage = document.getElementById('alertMessage');
-        const ttsAudioPlayer = document.getElementById('ttsAudioPlayer');
         const startupOverlay = document.getElementById('startupOverlay');
         let isProcessing = false;
-
-        // --- Utility Functions for PCM to WAV Conversion ---
-
-        /**
-         * Converts a base64 string to an ArrayBuffer safely (handling potential spaces/newlines).
-         * @param {string} base64 - The base64 string from the API.
-         * @returns {ArrayBuffer}
-         */
-        function base64ToArrayBuffer(base64) {
-            const cleanBase64 = base64.replace(/[\r\n\s]/g, '');
-            const binaryString = window.atob(cleanBase64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        /**
-         * Converts 16-bit signed PCM data (Int16Array) into a standard WAV file Blob.
-         * @param {Int16Array} pcm16 - The raw PCM audio data.
-         * @param {number} sampleRate - The audio sample rate (e.g., 24000).
-         * @returns {Blob} - A Blob representing the complete WAV file.
-         */
-        function pcmToWav(pcm16, sampleRate) {
-            const numChannels = 1;
-            const bytesPerSample = 2; // 16-bit
-            const blockAlign = numChannels * bytesPerSample;
-            const byteRate = sampleRate * blockAlign;
-            const dataSize = pcm16.length * bytesPerSample;
-            const fileSize = 36 + dataSize;
-
-            const buffer = new ArrayBuffer(fileSize + 8);
-            const view = new DataView(buffer);
-            let offset = 0;
-
-            function writeString(s) {
-                for (let i = 0; i < s.length; i++) {
-                    view.setUint8(offset++, s.charCodeAt(i));
-                }
-            }
-
-            // RIFF Chunk
-            writeString('RIFF');
-            view.setUint32(offset, fileSize, true);
-            offset += 4;
-            writeString('WAVE');
-
-            // fmt Chunk
-            writeString('fmt ');
-            view.setUint32(offset, 16, true);
-            offset += 4;
-            view.setUint16(offset, 1, true); // PCM Format
-            offset += 2;
-            view.setUint16(offset, numChannels, true);
-            offset += 2;
-            view.setUint32(offset, sampleRate, true);
-            offset += 4;
-            view.setUint32(offset, byteRate, true);
-            offset += 4;
-            view.setUint16(offset, blockAlign, true);
-            offset += 2;
-            view.setUint16(offset, 16, true); // 16 bits per sample
-            offset += 2;
-
-            // data Chunk
-            writeString('data');
-            view.setUint32(offset, dataSize, true);
-            offset += 4;
-
-            // Write PCM data
-            for (let i = 0; i < pcm16.length; i++) {
-                view.setInt16(offset, pcm16[i], true);
-                offset += 2;
-            }
-
-            return new Blob([buffer], { type: 'audio/wav' });
-        }
-
-        // --- TTS API Function ---
-
-        /**
-         * Synthesizes text to speech using Gemini and plays the resulting audio.
-         * @param {string} text - The text to be spoken.
-         */
-        async function synthesizeAndPlaySpeech(text) {
-            // Create a status indicator in the terminal
-            const ttsStatusDiv = document.createElement('div');
-            ttsStatusDiv.id = 'ttsStatus';
-            ttsStatusDiv.className = 'tts-status text-xs';
-            output.appendChild(ttsStatusDiv);
-            output.scrollTop = output.scrollHeight;
-
-            // Verify API Key existence before attempting request
-            if (!CLIENT_API_KEY) {
-                console.error("[TTS Error]: API Key is missing on the client side.");
-                ttsStatusDiv.textContent = "[TTS ERROR]: Client API Key missing. Set __api_key to enable speech.";
-                return;
-            }
-
-            console.log(`[TTS DEBUG]: Calling endpoint for model ${TTS_MODEL_NAME}`);
-
-            // Remove markdown formatting for speech clarity
-            const speechText = text.replace(/\*\*(.*?)\*\*/g, '$1');
-
-            const payload = {
-                contents: [{ parts: [{ text: speechText }] }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: TTS_VOICE_NAME }
-                        }
-                    }
-                },
-                model: TTS_MODEL_NAME
-            };
-
-            let audioUrl = null;
-            let attempts = 0;
-            const maxAttempts = 3;
-
-            while (attempts < maxAttempts) {
-                try {
-                    ttsStatusDiv.textContent = `[TTS]: Generating audio for playback (Attempt ${attempts + 1}/${maxAttempts})...`;
-
-                    const response = await fetch(TTS_API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        const errorDetails = await response.text();
-                        console.error(`TTS API returned status ${response.status}: ${errorDetails}`);
-                        throw new Error(`TTS API failed with status ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    const part = result?.candidates?.[0]?.content?.parts?.[0];
-                    const audioData = part?.inlineData?.data;
-                    const mimeType = part?.inlineData?.mimeType;
-
-                    if (!audioData || !mimeType) {
-                        throw new Error("TTS response missing audio payload.");
-                    }
-
-                    const rateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
-
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    const pcm16 = new Int16Array(pcmData);
-                    const wavBlob = pcmToWav(pcm16, sampleRate);
-
-                    if (ttsAudioPlayer.src) {
-                        URL.revokeObjectURL(ttsAudioPlayer.src);
-                    }
-
-                    audioUrl = URL.createObjectURL(wavBlob);
-                    break;
-                } catch (error) {
-                    console.error(`TTS Generation Error (Attempt ${attempts + 1}):`, error);
-                    attempts++;
-                    if (attempts < maxAttempts) {
-                        const delay = Math.pow(2, attempts) * 500;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    }
-                }
-            }
-
-            if (audioUrl) {
-                ttsStatusDiv.textContent = `[TTS]: Audio successfully generated. Playing now...`;
-                ttsAudioPlayer.src = audioUrl;
-                ttsAudioPlayer.load();
-                ttsAudioPlayer.play().catch(e => {
-                    ttsStatusDiv.textContent = `[TTS Warning]: Autoplay blocked. Click interface to allow audio.`;
-                    console.warn("Audio playback blocked:", e);
-                });
-
-                setTimeout(() => ttsStatusDiv.remove(), 5000);
-            } else {
-                ttsStatusDiv.textContent = `[TTS ERROR]: Speech synthesis failed. Check browser console.`;
-            }
-        }
 
         // --- Core Terminal Logic ---
 
@@ -429,7 +226,6 @@
                     showAlert(`Server Error: ${data.error}`);
                 } else if (data.response) {
                     appendOutput(data.response, 'system');
-                    synthesizeAndPlaySpeech(data.response);
                 } else {
                     appendOutput("ERROR: Received an invalid response from the server.", 'system');
                     showAlert("Invalid server response format.");
@@ -463,8 +259,6 @@
             output.innerHTML = '';
             const welcomeText = "This is the Lilith Command Line Interface. I am ready for your queries.";
             appendOutput(welcomeText, 'system');
-
-            synthesizeAndPlaySpeech(welcomeText);
         }
 
         input.addEventListener('keydown', function(event) {
